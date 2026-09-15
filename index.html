@@ -8,6 +8,38 @@
   </a-assets>
 
   <a-entity gltf-model="#Hallway"></a-entity>
+
+    <!-- Hallway 模型 -->
+    <a-entity
+        gltf-model="#Hallway"
+        position="0 0 -5"
+        rotation="0 0 0"
+        scale="1 1 1">
+    </a-entity>
+
+    <!-- ===================== -->
+    <!-- 玩家 -->
+    <!-- ===================== -->
+
+    <a-entity
+        id="player"
+        position="1 -1.5 5">
+
+        <a-camera
+            id="camera"
+            wasd-controls="acceleration: 20"
+            look-controls>
+
+            <!-- 中心准星 -->
+            <a-cursor
+                color="white"
+                scale="0.5 0.5 0.5">
+            </a-cursor>
+
+        </a-camera>
+
+    </a-entity>
+
 </a-scene>
  </body>
 </html>
