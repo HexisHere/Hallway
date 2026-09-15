@@ -1,6 +1,55 @@
 <html>
   <head>
     <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+    <script>
+AFRAME.registerComponent('head-bob', {
+
+    init: function () {
+        this.time = 0;
+        this.keys = {};
+        this.offset = 0;
+
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+        });
+    },
+
+    tick: function (time, delta) {
+
+        const moving =
+            this.keys['KeyW'] ||
+            this.keys['KeyA'] ||
+            this.keys['KeyS'] ||
+            this.keys['KeyD'];
+
+        // 先取消上一帧的起伏
+        this.el.object3D.position.y -= this.offset;
+
+        if (moving) {
+
+            this.time += delta / 1000;
+
+            // 计算这一帧的上下起伏
+            this.offset =
+                Math.sin(this.time * 10) * 0.04;
+
+        } else {
+
+            this.offset *= 0.8;
+
+        }
+
+        // 加上新的起伏
+        this.el.object3D.position.y += this.offset;
+    }
+
+});
+</script>
+    
   </head>
 <a-scene>
   <a-assets>
@@ -27,8 +76,9 @@
 
         <a-camera
             id="camera"
-            wasd-controls="acceleration: 20"
-            look-controls>
+            wasd-controls="acceleration: 6"
+            look-controls
+             head-bob>
 
             <!-- 中心准星 -->
             <a-cursor
