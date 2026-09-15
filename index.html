@@ -1,177 +1,303 @@
 <html>
-  <head>
+<head>
+
     <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+
+    <!-- 走路起伏 -->
     <script>
-AFRAME.registerComponent('head-bob', {
 
-    init: function () {
-        this.time = 0;
-        this.keys = {};
-        this.offset = 0;
+    AFRAME.registerComponent('head-bob', {
 
-        window.addEventListener('keydown', (e) => {
-            this.keys[e.code] = true;
-        });
+        init: function () {
 
-        window.addEventListener('keyup', (e) => {
-            this.keys[e.code] = false;
-        });
-    },
+            this.time = 0; 
+            this.keys = {};
+            this.offset = 0;
 
-    tick: function (time, delta) {
+            window.addEventListener('keydown', (e) => {
+                this.keys[e.code] = true;
+            });
 
-        const moving =
-            this.keys['KeyW'] ||
-            this.keys['KeyA'] ||
-            this.keys['KeyS'] ||
-            this.keys['KeyD'];
+            window.addEventListener('keyup', (e) => {
+                this.keys[e.code] = false;
+            });
 
-        // 先取消上一帧的起伏
-        this.el.object3D.position.y -= this.offset;
+        },
 
-        if (moving) {
+        tick: function (time, delta) {
 
-            this.time += delta / 1000;
+            const moving =
+                this.keys['KeyW'] ||
+                this.keys['KeyA'] ||
+                this.keys['KeyS'] ||
+                this.keys['KeyD'];
 
-            // 计算这一帧的上下起伏
-            this.offset =
-                Math.sin(this.time * 10) * 0.04;
+            // 取消上一帧起伏
+            this.el.object3D.position.y -= this.offset;
 
-        } else {
 
-            this.offset *= 0.8;
+            if (moving) {
+
+                this.time += delta / 1000;
+                this.offset =
+                    Math.sin(this.time * 10) * 0.04;
+
+            } else {
+
+                this.offset *= 0.8;
+
+            }
+
+
+            // 添加这一帧起伏
+            this.el.object3D.position.y += this.offset;
 
         }
 
-        // 加上新的起伏
-        this.el.object3D.position.y += this.offset;
-    }
+    });
 
-});
-</script>
+    </script>
 
-  <script>
-AFRAME.registerComponent('door-interaction', {
+    <!-- ======================================== -->
+    <!-- 红色区域交互 -->
+    <!-- 第一次点击：显示 Enter? -->
+    <!-- 第二次点击：进入 Room2 -->
+    <!-- ======================================== -->
 
-    init: function () {
+    <script>
 
-        this.el.addEventListener('click', function () {
+    AFRAME.registerComponent('door-interaction', {
 
-            const text = document.querySelector('#enterText');
+        init: function () {
 
-            text.setAttribute('visible', 'true');
+            this.readyToEnter = false;
 
-        });
+            this.el.addEventListener('click', () => {
 
-    }
+                const text =
+                    document.querySelector('#enterText');
 
-});
-</script>
+                const hallway =
+                    document.querySelector('#hallway');
 
-<script>
-AFRAME.registerComponent('move-trigger', {
-    init: function () {
-        window.addEventListener('keydown', (e) => {
+                const room2 =
+                    document.querySelector('#room2');
 
-            const p = this.el.object3D.position;
-            const step = 0.1;
+                const player =
+                    document.querySelector('#player');
 
-            // 左右
-            if (e.code === 'ArrowLeft')  p.x -= step;
-            if (e.code === 'ArrowRight') p.x += step;
 
-            // 前后
-            if (e.code === 'ArrowUp')    p.z -= step;
-            if (e.code === 'ArrowDown')  p.z += step;
+                // 第一次点击
+                // 只显示 Enter?
+                if (!this.readyToEnter) {
 
-            // 上下
-            if (e.code === 'KeyQ') p.y += step;
-            if (e.code === 'KeyE') p.y -= step;
+                    text.setAttribute('visible', true);
 
-            console.log(
-                "Trigger Position:",
-                p.x.toFixed(2),
-                p.y.toFixed(2),
-                p.z.toFixed(2)
-            );
-        });
-    }
-});
-</script>
+                    this.readyToEnter = true;
 
-  </head>
+                    return;
+                }
+
+
+                // 第二次点击
+                // 隐藏 Enter?
+                text.setAttribute('visible', false);
+
+
+                // 隐藏 Hallway
+                hallway.setAttribute('visible', false);
+
+
+                // 显示 Room2
+                room2.setAttribute('visible', true);
+
+
+                // 玩家传送到 Room2
+                player.setAttribute(
+                    'position',
+                    '0 -1.5 5'
+                );
+
+
+                console.log("Entered Room2");
+
+            });
+
+        }
+
+    });
+
+    </script>
+
+    <!-- ======================================== -->
+    <!-- 调整红色区域位置 -->
+    <!-- ======================================== -->
+
+    <script>
+
+    AFRAME.registerComponent('move-trigger', {
+
+        init: function () {
+
+            window.addEventListener('keydown', (e) => {
+
+                const p =
+                    this.el.object3D.position;
+
+                const step = 0.1;
+
+
+                // 左右
+                if (e.code === 'ArrowLeft')
+                    p.x -= step;
+
+                if (e.code === 'ArrowRight')
+                    p.x += step;
+
+
+                // 前后
+                if (e.code === 'ArrowUp')
+                    p.z -= step;
+
+                if (e.code === 'ArrowDown')
+                    p.z += step;
+
+
+                // 上下
+                if (e.code === 'KeyQ')
+                    p.y += step;
+
+                if (e.code === 'KeyE')
+                    p.y -= step;
+
+
+                console.log(
+                    "Trigger Position:",
+                    p.x.toFixed(2),
+                    p.y.toFixed(2),
+                    p.z.toFixed(2)
+                );
+
+            });
+
+        }
+
+    });
+
+    </script>
+</head>
+
+
+<body>
+
+
 <a-scene>
-  <a-assets>
-    <a-asset-item id="Hallway" src="Hallway.glb"></a-asset-item>
-  </a-assets>
 
-  <a-entity gltf-model="#Hallway"></a-entity>
 
-    <!-- Hallway 模型 -->
+    <!-- ======================================== -->
+    <!-- 模型资源 -->
+    <!-- ======================================== -->
+
+    <a-assets>
+
+
+        <!-- Hallway -->
+        <a-asset-item
+            id="Hallway" src="Hallway.glb">
+        </a-asset-item>
+
+
+        <!-- Room2 -->
+        <a-asset-item
+            id="Room2" src="Room2.glb">
+        </a-asset-item>
+
+
+    </a-assets>
+
+    <!-- Hallway -->
     <a-entity
-        gltf-model="#Hallway"
+
+        id="hallway"gltf-model="#Hallway"
         position="0 0 -5"
         rotation="0 0 0"
-        scale="1 1 1">
+        scale="1 1 1"
+        visible="true">
+
     </a-entity>
-a
+
+
+    <!-- Room2 -->
+    <!-- 一开始隐藏 -->
+    <a-entity
+    id="room2"
+    gltf-model="#Room2"
+    position="5.5 0 -5"
+    rotation="0 0 0"
+    scale="1 1 1"
+    visible="true"
+    move-room>
+</a-entity>
+
+    <!-- 红色交互区域 -->
     <a-box
-    id="doorTrigger"
-    class="clickable"
 
-    position="1.8 1 2"a
-wa
-    width="0.5a"
-    height="4"w
-    depth="2a"
+        id="doorTrigger"
+        class="clickable"
+        position="1.8 1 -2.3"
+        width="0.5"
+        height="4"
+        depth="2"
+        color="red"
+        opacity="0.5"
+        door-interaction>
 
-   color="red"
-    opacity="0.5"
+    </a-box>
 
-    door-interaction>w
+    <!-- 黑色墙体 -->
+    <a-box
+    position="5 0 -5"
+    width="1"
+    height="7"
+    depth="4"
+    color="black">
+    
 </a-box>
 
-    <!-- ===================== -->
     <!-- 玩家 -->
-    <!-- ===================== -->a
-
     <a-entity
-        id="player"
-        position="1 -1.5 5">
+
+        id="player" position="1 -1.5 1">
 
         <a-camera
             id="camera"
             wasd-controls="acceleration: 6"
             look-controls
-             head-bob>
+            head-bob>
 
             <!-- 中心准星 -->
-          
+
             <a-cursor
-    color="white"
-    raycaster="objects: .clickable">
+                color="white"
+                raycaster="objects: .clickable">
             </a-cursor>
 
-<a-text
-    id="enterText"
-aw
-    value="Enter?"
+            <!-- Enter 提示 -->
 
-    position="0 -0.25 -1"
+            <a-text
 
-    align="center"
+                id="enterText" value="Enter?"
+                position="0 -0.25 -1" 
+                align="center"
+                width="2"
+                color="white"
+                visible="false">
 
-    width="2"
-
-    color="white"
-
-    visible="false">
-</a-text>
+            </a-text>
 
         </a-camera>
 
     </a-entity>
-
 </a-scene>
- </body>
+</body>
 </html>
