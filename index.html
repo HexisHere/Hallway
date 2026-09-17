@@ -275,6 +275,29 @@
             look-controls
             head-bob>
 
+            <!-- 场景基础光 -->
+<a-entity
+    light="
+        type: ambient;
+        color: #78808f;
+        intensity: 0.25
+    ">
+</a-entity>
+
+<!-- 玩家手电 -->
+<a-entity
+    light="
+        type: spot;
+        color: #fff1d6;
+        intensity: 3.5;
+        distance: 18;
+        angle: 30;
+        penumbra: 0.95;
+        decay: 1.2
+    "
+    position="0 0 0">
+</a-entity>
+
             <!-- 中心准星 -->
 
             <a-cursor
