@@ -12,12 +12,23 @@ AFRAME.registerComponent('head-bob', {
         this.time = 0;
         this.offset = 0;
         this.keys = {};
-        window.addEventListener('keydown', e => this.keys[e.code] = true);
-        window.addEventListener('keyup', e => this.keys[e.code] = false);
+
+        window.addEventListener('keydown', e => {
+            this.keys[e.code] = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            this.keys[e.code] = false;
+        });
     },
 
     tick(time, delta) {
-        const moving = this.keys.KeyW || this.keys.KeyA || this.keys.KeyS || this.keys.KeyD;
+        const moving =
+            this.keys.KeyW ||
+            this.keys.KeyA ||
+            this.keys.KeyS ||
+            this.keys.KeyD;
+
         this.el.object3D.position.y -= this.offset;
 
         if (moving) {
@@ -30,6 +41,7 @@ AFRAME.registerComponent('head-bob', {
         this.el.object3D.position.y += this.offset;
     }
 });
+
 
 /* 脚步声 */
 AFRAME.registerComponent('footsteps', {
@@ -45,7 +57,8 @@ AFRAME.registerComponent('footsteps', {
             this.keys[e.code] = true;
 
             if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.audioContext =
+                    new (window.AudioContext || window.webkitAudioContext)();
             }
 
             if (this.audioContext.state === 'suspended') {
@@ -66,13 +79,22 @@ AFRAME.registerComponent('footsteps', {
         const ctx = this.audioContext;
         const now = ctx.currentTime;
         const duration = 0.18;
-        const bufferSize = Math.floor(ctx.sampleRate * duration);
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
+
+        const bufferSize =
+            Math.floor(ctx.sampleRate * duration);
+
+        const buffer =
+            ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+
+        const data =
+            buffer.getChannelData(0);
 
         for (let i = 0; i < bufferSize; i++) {
-            const fade = Math.pow(1 - i / bufferSize, 3);
-            data[i] = (Math.random() * 2 - 1) * fade;
+            const fade =
+                Math.pow(1 - i / bufferSize, 3);
+
+            data[i] =
+                (Math.random() * 2 - 1) * fade;
         }
 
         const source = ctx.createBufferSource();
@@ -84,11 +106,13 @@ AFRAME.registerComponent('footsteps', {
         source.buffer = buffer;
 
         lowpass.type = 'lowpass';
-        lowpass.frequency.value = 260 + Math.random() * 90;
+        lowpass.frequency.value =
+            260 + Math.random() * 90;
         lowpass.Q.value = 0.8;
 
         bass.type = 'peaking';
-        bass.frequency.value = 90 + Math.random() * 20;
+        bass.frequency.value =
+            90 + Math.random() * 20;
         bass.Q.value = 1.2;
         bass.gain.value = 11;
 
@@ -96,11 +120,23 @@ AFRAME.registerComponent('footsteps', {
         lowShelf.frequency.value = 180;
         lowShelf.gain.value = 8;
 
-        const volume = 0.65 + Math.random() * 0.025;
+        const volume =
+            0.65 + Math.random() * 0.025;
 
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(volume, now + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        gain.gain.setValueAtTime(
+            0.001,
+            now
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            volume,
+            now + 0.012
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + duration
+        );
 
         source.connect(lowpass);
         lowpass.connect(bass);
@@ -113,7 +149,11 @@ AFRAME.registerComponent('footsteps', {
     },
 
     tick(time, delta) {
-        const moving = this.keys.KeyW || this.keys.KeyA || this.keys.KeyS || this.keys.KeyD;
+        const moving =
+            this.keys.KeyW ||
+            this.keys.KeyA ||
+            this.keys.KeyS ||
+            this.keys.KeyD;
 
         if (!moving) {
             this.stepTimer = 0;
@@ -129,6 +169,7 @@ AFRAME.registerComponent('footsteps', {
     }
 });
 
+
 /* UI永远显示在最前面 */
 AFRAME.registerComponent('hud-layer', {
     tick() {
@@ -142,6 +183,7 @@ AFRAME.registerComponent('hud-layer', {
         });
     }
 });
+
 
 /* 任务纸UI层级 */
 AFRAME.registerComponent('paper-hud', {
@@ -166,18 +208,30 @@ AFRAME.registerComponent('paper-hud', {
     }
 });
 
+
 /* Hallway → Room2：靠近门按 E */
 AFRAME.registerComponent('door-interaction', {
     init() {
         this.nearDoor = false;
         this.hasEntered = false;
 
-        this.player = document.querySelector('#player');
-        this.camera = document.querySelector('#camera');
-        this.hallway = document.querySelector('#hallway');
-        this.room2 = document.querySelector('#room2');
-        this.spawn = document.querySelector('#room2Spawn');
-        this.text = document.querySelector('#enterText');
+        this.player =
+            document.querySelector('#player');
+
+        this.camera =
+            document.querySelector('#camera');
+
+        this.hallway =
+            document.querySelector('#hallway');
+
+        this.room2 =
+            document.querySelector('#room2');
+
+        this.spawn =
+            document.querySelector('#room2Spawn');
+
+        this.text =
+            document.querySelector('#enterText');
 
         window.addEventListener('keydown', e => {
             if (e.code !== 'KeyE' || e.repeat) return;
@@ -194,29 +248,60 @@ AFRAME.registerComponent('door-interaction', {
         this.text.setAttribute('value', '');
         this.text.setAttribute('visible', false);
 
-        this.hallway.setAttribute('visible', false);
-        this.room2.setAttribute('visible', true);
+        this.hallway.setAttribute(
+            'visible',
+            false
+        );
+
+        this.room2.setAttribute(
+            'visible',
+            true
+        );
 
         this.room2.object3D.updateMatrixWorld(true);
 
-        const spawnPosition = new THREE.Vector3();
-        this.spawn.object3D.getWorldPosition(spawnPosition);
+        const spawnPosition =
+            new THREE.Vector3();
 
-        this.player.object3D.position.copy(spawnPosition);
-        this.camera.object3D.position.set(0, 1.6, 0);
+        this.spawn.object3D.getWorldPosition(
+            spawnPosition
+        );
+
+        this.player.object3D.position.copy(
+            spawnPosition
+        );
+
+        this.camera.object3D.position.set(
+            0,
+            1.6,
+            0
+        );
     },
 
     tick() {
         if (this.hasEntered) return;
 
-        const doorPosition = new THREE.Vector3();
-        const cameraPosition = new THREE.Vector3();
+        const doorPosition =
+            new THREE.Vector3();
 
-        this.el.object3D.getWorldPosition(doorPosition);
-        this.camera.object3D.getWorldPosition(cameraPosition);
+        const cameraPosition =
+            new THREE.Vector3();
 
-        const distance = doorPosition.distanceTo(cameraPosition);
-        const near = distance < 2;
+        this.el.object3D.getWorldPosition(
+            doorPosition
+        );
+
+        this.camera.object3D.getWorldPosition(
+            cameraPosition
+        );
+
+        const distance =
+            doorPosition.distanceTo(
+                cameraPosition
+            );
+
+        const near =
+            distance < 2;
 
         if (near !== this.nearDoor) {
             this.nearDoor = near;
@@ -234,6 +319,7 @@ AFRAME.registerComponent('door-interaction', {
     }
 });
 
+
 /* 任务纸系统 */
 AFRAME.registerComponent('paper-system', {
     init() {
@@ -242,11 +328,20 @@ AFRAME.registerComponent('paper-system', {
         this.nearPaper = false;
         this.audioContext = null;
 
-        this.paper = document.querySelector('#missionPaper');
-        this.camera = document.querySelector('#camera');
-        this.hint = document.querySelector('#paperHint');
-        this.paperUI = document.querySelector('#paperInspectUI');
-        this.subTask = document.querySelector('#subTask');
+        this.paper =
+            document.querySelector('#missionPaper');
+
+        this.camera =
+            document.querySelector('#camera');
+
+        this.hint =
+            document.querySelector('#paperHint');
+
+        this.paperUI =
+            document.querySelector('#paperInspectUI');
+
+        this.subTask =
+            document.querySelector('#subTask');
 
         window.addEventListener('keydown', e => {
             if (e.code !== 'KeyE' || e.repeat) return;
@@ -257,17 +352,36 @@ AFRAME.registerComponent('paper-system', {
                 this.hasPaper = true;
                 this.inspecting = true;
 
-                this.paper.setAttribute('visible', false);
-                this.paperUI.setAttribute('visible', true);
-                this.subTask.setAttribute('visible', true);
-                this.hint.setAttribute('value', '');
+                this.paper.setAttribute(
+                    'visible',
+                    false
+                );
+
+                this.paperUI.setAttribute(
+                    'visible',
+                    true
+                );
+
+                this.subTask.setAttribute(
+                    'visible',
+                    true
+                );
+
+                this.hint.setAttribute(
+                    'value',
+                    ''
+                );
 
                 return;
             }
 
             if (this.hasPaper && this.inspecting) {
                 this.inspecting = false;
-                this.paperUI.setAttribute('visible', false);
+
+                this.paperUI.setAttribute(
+                    'visible',
+                    false
+                );
             }
         });
     },
@@ -275,7 +389,8 @@ AFRAME.registerComponent('paper-system', {
     /* 捡起纸张声音 */
     playPaperSound() {
         if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.audioContext =
+                new (window.AudioContext || window.webkitAudioContext)();
         }
 
         const ctx = this.audioContext;
@@ -286,22 +401,47 @@ AFRAME.registerComponent('paper-system', {
 
         const now = ctx.currentTime;
         const duration = 0.42;
-        const bufferSize = Math.floor(ctx.sampleRate * duration);
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
+
+        const bufferSize =
+            Math.floor(ctx.sampleRate * duration);
+
+        const buffer =
+            ctx.createBuffer(
+                1,
+                bufferSize,
+                ctx.sampleRate
+            );
+
+        const data =
+            buffer.getChannelData(0);
 
         for (let i = 0; i < bufferSize; i++) {
-            const t = i / bufferSize;
-            const envelope = Math.sin(Math.PI * t);
-            const texture = 0.65 + Math.random() * 0.35;
+            const t =
+                i / bufferSize;
 
-            data[i] = (Math.random() * 2 - 1) * envelope * texture;
+            const envelope =
+                Math.sin(Math.PI * t);
+
+            const texture =
+                0.65 + Math.random() * 0.35;
+
+            data[i] =
+                (Math.random() * 2 - 1) *
+                envelope *
+                texture;
         }
 
-        const source = ctx.createBufferSource();
-        const highpass = ctx.createBiquadFilter();
-        const lowpass = ctx.createBiquadFilter();
-        const gain = ctx.createGain();
+        const source =
+            ctx.createBufferSource();
+
+        const highpass =
+            ctx.createBiquadFilter();
+
+        const lowpass =
+            ctx.createBiquadFilter();
+
+        const gain =
+            ctx.createGain();
 
         source.buffer = buffer;
 
@@ -311,10 +451,25 @@ AFRAME.registerComponent('paper-system', {
         lowpass.type = 'lowpass';
         lowpass.frequency.value = 4800;
 
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.42, now + 0.035);
-        gain.gain.linearRampToValueAtTime(0.25, now + 0.18);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        gain.gain.setValueAtTime(
+            0.001,
+            now
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            0.42,
+            now + 0.035
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            0.25,
+            now + 0.18
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + duration
+        );
 
         source.connect(highpass);
         highpass.connect(lowpass);
@@ -328,20 +483,33 @@ AFRAME.registerComponent('paper-system', {
     tick() {
         if (this.hasPaper) return;
 
-        const paperPosition = new THREE.Vector3();
-        const cameraPosition = new THREE.Vector3();
+        const paperPosition =
+            new THREE.Vector3();
 
-        this.paper.object3D.getWorldPosition(paperPosition);
-        this.camera.object3D.getWorldPosition(cameraPosition);
+        const cameraPosition =
+            new THREE.Vector3();
 
-        const near = paperPosition.distanceTo(cameraPosition) < 1.5;
+        this.paper.object3D.getWorldPosition(
+            paperPosition
+        );
+
+        this.camera.object3D.getWorldPosition(
+            cameraPosition
+        );
+
+        const near =
+            paperPosition.distanceTo(
+                cameraPosition
+            ) < 1.5;
 
         if (near !== this.nearPaper) {
             this.nearPaper = near;
 
             this.hint.setAttribute(
                 'value',
-                near ? 'Press E to pick up' : ''
+                near
+                    ? 'Press E to pick up'
+                    : ''
             );
         }
     }
@@ -349,20 +517,36 @@ AFRAME.registerComponent('paper-system', {
 </script>
 </head>
 
+
 <body>
+
 <a-scene>
 
     <!-- 天空 -->
     <a-sky color="#111111"></a-sky>
 
-    <!-- 模型 -->
+
+    <!-- 所有模型 -->
     <a-assets>
-        <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
-        <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
+
+        <a-asset-item
+            id="Hallway"
+            src="Hallway2.glb">
+        </a-asset-item>
+
+        <a-asset-item
+            id="Room2"
+            src="Room2.glb">
+        </a-asset-item>
 
         <!-- Eye模型 -->
-        <a-asset-item id="Eye" src="eye.glb"></a-asset-item>
+        <a-asset-item
+            id="Eye"
+            src="eye2.glb">
+        </a-asset-item>
+
     </a-assets>
+
 
     <!-- 地上的任务纸 -->
     <a-box
@@ -375,6 +559,7 @@ AFRAME.registerComponent('paper-system', {
         color="#e8e2d3">
     </a-box>
 
+
     <!-- Hallway -->
     <a-entity
         id="hallway"
@@ -383,29 +568,53 @@ AFRAME.registerComponent('paper-system', {
         visible="true">
     </a-entity>
 
-    <!-- Eye模型 -->
-    <a-entity
-        id="eye"
-        gltf-model="#Eye"
-        position="3 -1.5 1"
-        rotation="0 0 0"
-        scale="1 1 1"
-        visible="true">
-    </a-entity>
 
+    <!-- ========================= -->
     <!-- Room2 -->
+    <!-- ========================= -->
+
     <a-entity
         id="room2"
         gltf-model="#Room2"
         position="5.5 0 -5"
         visible="false">
 
+
+        <!-- 玩家出生位置 -->
         <a-entity
             id="room2Spawn"
             position="-1.5 -1.5 1">
         </a-entity>
 
+
+        <a-entity
+            id="eye"
+            gltf-model="#Eye"
+            position="-1.5 0.1 0"
+            rotation="0 0 0"
+            scale="10 10 10"
+            visible="true">
+        </a-entity>
+
+
+        <!--
+        测试用红球
+
+        Eye和红球的位置完全相同。
+        如果看到红球却看不到Eye，
+        就说明坐标没有问题。
+        -->
+        <a-sphere
+            id="eyeTestSphere"
+            position="-1.5 0.1 0"
+            radius="0.3"
+            color="red"
+            material="shader: flat">
+        </a-sphere>
+
+
     </a-entity>
+
 
     <!-- Hallway → Room2 门触发区域 -->
     <a-box
@@ -414,9 +623,12 @@ AFRAME.registerComponent('paper-system', {
         width="0.5"
         height="4"
         depth="2"
-        material="transparent: true; opacity: 0"
+        material="
+            transparent: true;
+            opacity: 0"
         door-interaction>
     </a-box>
+
 
     <!-- 黑色墙体 -->
     <a-box
@@ -427,6 +639,7 @@ AFRAME.registerComponent('paper-system', {
         color="#000000">
     </a-box>
 
+
     <a-box
         position="5 0 -5"
         width="1"
@@ -435,6 +648,7 @@ AFRAME.registerComponent('paper-system', {
         color="#000000">
     </a-box>
 
+
     <!-- 玩家 -->
     <a-entity
         id="player"
@@ -442,20 +656,34 @@ AFRAME.registerComponent('paper-system', {
         paper-system
         footsteps>
 
+
         <a-camera
             id="camera"
             wasd-controls="acceleration: 6"
             look-controls
             head-bob>
 
+
             <!-- 灯光 -->
             <a-entity
-                light="type: ambient; color: black; intensity: 1.2">
+                light="
+                    type: ambient;
+                    color: black;
+                    intensity: 1.2">
             </a-entity>
 
+
             <a-entity
-                light="type: spot; color: #fff1d6; intensity: 3; distance: 18; angle: 45; penumbra: 1; decay: 1">
+                light="
+                    type: spot;
+                    color: #fff1d6;
+                    intensity: 3;
+                    distance: 18;
+                    angle: 45;
+                    penumbra: 1;
+                    decay: 1">
             </a-entity>
+
 
             <!-- 恐怖游戏任务栏 -->
             <a-entity
@@ -463,21 +691,34 @@ AFRAME.registerComponent('paper-system', {
                 position="-1.25 0.78 -1"
                 hud-layer>
 
+
                 <!-- 黑色半透明背景 -->
                 <a-plane
                     position="0.20 -0.105 -0.01"
                     width="0.62"
                     height="0.27"
-                    material="color: #050505; opacity: 0.72; transparent: true; shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        color: #050505;
+                        opacity: 0.72;
+                        transparent: true;
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-plane>
+
 
                 <!-- 左侧暗红线 -->
                 <a-plane
                     position="-0.105 -0.105 0"
                     width="0.008"
                     height="0.27"
-                    material="color: #651919; shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        color: #651919;
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-plane>
+
 
                 <!-- MAIN TASK -->
                 <a-text
@@ -487,8 +728,12 @@ AFRAME.registerComponent('paper-system', {
                     anchor="left"
                     width="0.52"
                     color="#8c3d3d"
-                    material="shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-text>
+
 
                 <!-- 主任务 -->
                 <a-text
@@ -498,21 +743,33 @@ AFRAME.registerComponent('paper-system', {
                     anchor="left"
                     width="0.65"
                     color="#d8d4ca"
-                    material="shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-text>
+
 
                 <!-- 分割线 -->
                 <a-plane
                     position="0.19 -0.115 0"
                     width="0.52"
                     height="0.002"
-                    material="color: #4a4641; opacity: 0.65; transparent: true; shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        color: #4a4641;
+                        opacity: 0.65;
+                        transparent: true;
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-plane>
+
 
                 <!-- 捡纸后出现的新任务 -->
                 <a-entity
                     id="subTask"
                     visible="false">
+
 
                     <a-text
                         value="OBJECTIVE UPDATED"
@@ -521,8 +778,12 @@ AFRAME.registerComponent('paper-system', {
                         anchor="left"
                         width="0.46"
                         color="#77736c"
-                        material="shader: flat; depthTest: false; depthWrite: false">
+                        material="
+                            shader: flat;
+                            depthTest: false;
+                            depthWrite: false">
                     </a-text>
+
 
                     <a-text
                         value="Explore the rooms"
@@ -531,11 +792,17 @@ AFRAME.registerComponent('paper-system', {
                         anchor="left"
                         width="0.60"
                         color="#c9c5ba"
-                        material="shader: flat; depthTest: false; depthWrite: false">
+                        material="
+                            shader: flat;
+                            depthTest: false;
+                            depthWrite: false">
                     </a-text>
 
+
                 </a-entity>
+
             </a-entity>
+
 
             <!-- 任务纸阅读界面 -->
             <a-entity
@@ -543,14 +810,19 @@ AFRAME.registerComponent('paper-system', {
                 visible="false"
                 paper-hud>
 
+
                 <a-plane
                     id="paperView"
                     position="0 0 -0.70"
                     width="0.75"
                     height="1"
                     color="#b8aa87"
-                    material="shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-plane>
+
 
                 <a-text
                     id="paperText"
@@ -561,8 +833,12 @@ AFRAME.registerComponent('paper-system', {
                     baseline="center"
                     width="0.62"
                     color="#111111"
-                    material="shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-text>
+
 
                 <a-text
                     id="closeHint"
@@ -572,10 +848,15 @@ AFRAME.registerComponent('paper-system', {
                     anchor="center"
                     width="1"
                     color="#ffffff"
-                    material="shader: flat; depthTest: false; depthWrite: false">
+                    material="
+                        shader: flat;
+                        depthTest: false;
+                        depthWrite: false">
                 </a-text>
 
+
             </a-entity>
+
 
             <!-- 捡纸提示 -->
             <a-text
@@ -586,11 +867,16 @@ AFRAME.registerComponent('paper-system', {
                 anchor="center"
                 width="1.5"
                 color="#ffffff"
-                material="shader: flat; depthTest: false">
+                material="
+                    shader: flat;
+                    depthTest: false">
             </a-text>
 
+
             <!-- 准星 -->
-            <a-cursor color="white"></a-cursor>
+            <a-cursor color="white">
+            </a-cursor>
+
 
             <!-- 门交互提示 -->
             <a-text
@@ -601,13 +887,20 @@ AFRAME.registerComponent('paper-system', {
                 anchor="center"
                 width="2"
                 color="#ffffff"
-                material="shader: flat; depthTest: false; depthWrite: false"
+                material="
+                    shader: flat;
+                    depthTest: false;
+                    depthWrite: false"
                 visible="false">
             </a-text>
 
+
         </a-camera>
+
     </a-entity>
 
+
 </a-scene>
+
 </body>
 </html>
