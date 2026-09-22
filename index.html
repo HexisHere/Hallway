@@ -6,29 +6,18 @@
 <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
 
 <script>
-/* ==================== 走路起伏 ==================== */
+/* 走路起伏 */
 AFRAME.registerComponent('head-bob', {
-    init: function () {
+    init() {
         this.time = 0;
         this.offset = 0;
         this.keys = {};
-
-        window.addEventListener('keydown', e => {
-            this.keys[e.code] = true;
-        });
-
-        window.addEventListener('keyup', e => {
-            this.keys[e.code] = false;
-        });
+        window.addEventListener('keydown', e => this.keys[e.code] = true);
+        window.addEventListener('keyup', e => this.keys[e.code] = false);
     },
 
-    tick: function (time, delta) {
-        const moving =
-            this.keys['KeyW'] ||
-            this.keys['KeyA'] ||
-            this.keys['KeyS'] ||
-            this.keys['KeyD'];
-
+    tick(time, delta) {
+        const moving = this.keys.KeyW || this.keys.KeyA || this.keys.KeyS || this.keys.KeyD;
         this.el.object3D.position.y -= this.offset;
 
         if (moving) {
@@ -42,10 +31,107 @@ AFRAME.registerComponent('head-bob', {
     }
 });
 
+/* 脚步声 */
+AFRAME.registerComponent('footsteps', {
+    init() {
+        this.keys = {};
+        this.stepTimer = 0;
+        this.stepInterval = 0.58;
+        this.audioContext = null;
 
-/* ==================== 左上角任务栏图层 ==================== */
+        window.addEventListener('keydown', e => {
+            if (!['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) return;
+
+            this.keys[e.code] = true;
+
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) {
+                this.keys[e.code] = false;
+            }
+        });
+    },
+
+    playStep() {
+        if (!this.audioContext) return;
+
+        const ctx = this.audioContext;
+        const now = ctx.currentTime;
+        const duration = 0.18;
+        const bufferSize = Math.floor(ctx.sampleRate * duration);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            const fade = Math.pow(1 - i / bufferSize, 3);
+            data[i] = (Math.random() * 2 - 1) * fade;
+        }
+
+        const source = ctx.createBufferSource();
+        const lowpass = ctx.createBiquadFilter();
+        const bass = ctx.createBiquadFilter();
+        const lowShelf = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        source.buffer = buffer;
+
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 260 + Math.random() * 90;
+        lowpass.Q.value = 0.8;
+
+        bass.type = 'peaking';
+        bass.frequency.value = 90 + Math.random() * 20;
+        bass.Q.value = 1.2;
+        bass.gain.value = 11;
+
+        lowShelf.type = 'lowshelf';
+        lowShelf.frequency.value = 180;
+        lowShelf.gain.value = 8;
+
+        const volume = 0.65 + Math.random() * 0.025;
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(volume, now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        source.connect(lowpass);
+        lowpass.connect(bass);
+        bass.connect(lowShelf);
+        lowShelf.connect(gain);
+        gain.connect(ctx.destination);
+
+        source.start(now);
+        source.stop(now + duration);
+    },
+
+    tick(time, delta) {
+        const moving = this.keys.KeyW || this.keys.KeyA || this.keys.KeyS || this.keys.KeyD;
+
+        if (!moving) {
+            this.stepTimer = 0;
+            return;
+        }
+
+        this.stepTimer += delta / 1000;
+
+        if (this.stepTimer >= this.stepInterval) {
+            this.stepTimer = 0;
+            this.playStep();
+        }
+    }
+});
+
+/* UI永远显示在最前面 */
 AFRAME.registerComponent('hud-layer', {
-    tick: function () {
+    tick() {
         this.el.object3D.traverse(obj => {
             obj.renderOrder = 900;
 
@@ -57,88 +143,104 @@ AFRAME.registerComponent('hud-layer', {
     }
 });
 
-
-/* ==================== 检视纸张图层 ==================== */
+/* 任务纸UI层级 */
 AFRAME.registerComponent('paper-hud', {
-    tick: function () {
-        const background = document.querySelector('#paperView');
-        const text = document.querySelector('#paperText');
-        const closeHint = document.querySelector('#closeHint');
+    tick() {
+        const setLayer = (selector, order) => {
+            const el = document.querySelector(selector);
+            if (!el) return;
 
-        if (background) {
-            background.object3D.traverse(obj => {
-                obj.renderOrder = 1000;
-
-                if (obj.material) {
-                    obj.material.depthTest = false;
-                    obj.material.depthWrite = false;
-                }
-            });
-        }
-
-        if (text) {
-            text.object3D.traverse(obj => {
-                obj.renderOrder = 1001;
+            el.object3D.traverse(obj => {
+                obj.renderOrder = order;
 
                 if (obj.material) {
                     obj.material.depthTest = false;
                     obj.material.depthWrite = false;
                 }
             });
-        }
+        };
 
-        if (closeHint) {
-            closeHint.object3D.traverse(obj => {
-                obj.renderOrder = 1002;
-
-                if (obj.material) {
-                    obj.material.depthTest = false;
-                    obj.material.depthWrite = false;
-                }
-            });
-        }
+        setLayer('#paperView', 1000);
+        setLayer('#paperText', 1001);
+        setLayer('#closeHint', 1002);
     }
 });
 
-
-/* ==================== 门交互 ==================== */
+/* Hallway → Room2：靠近门按 E */
 AFRAME.registerComponent('door-interaction', {
-    init: function () {
-        this.readyToEnter = false;
+    init() {
+        this.nearDoor = false;
+        this.hasEntered = false;
 
-        this.el.addEventListener('click', () => {
-            const text = document.querySelector('#enterText');
-            const hallway = document.querySelector('#hallway');
-            const room2 = document.querySelector('#room2');
-            const player = document.querySelector('#player');
-            const camera = document.querySelector('#camera');
+        this.player = document.querySelector('#player');
+        this.camera = document.querySelector('#camera');
+        this.hallway = document.querySelector('#hallway');
+        this.room2 = document.querySelector('#room2');
+        this.spawn = document.querySelector('#room2Spawn');
+        this.text = document.querySelector('#enterText');
 
-            if (!this.readyToEnter) {
-                text.setAttribute('visible', true);
-                this.readyToEnter = true;
-                return;
-            }
+        window.addEventListener('keydown', e => {
+            if (e.code !== 'KeyE' || e.repeat) return;
+            if (!this.nearDoor || this.hasEntered) return;
 
-            text.setAttribute('visible', false);
-            hallway.setAttribute('visible', false);
-            room2.setAttribute('visible', true);
-
-            player.setAttribute('position', '4 -1.5 -1');
-
-            camera.object3D.position.x = 0;
-            camera.object3D.position.y = 1.6;
-            camera.object3D.position.z = 0;
+            this.enterRoom();
         });
+    },
+
+    enterRoom() {
+        this.hasEntered = true;
+        this.nearDoor = false;
+
+        this.text.setAttribute('value', '');
+        this.text.setAttribute('visible', false);
+
+        this.hallway.setAttribute('visible', false);
+        this.room2.setAttribute('visible', true);
+
+        this.room2.object3D.updateMatrixWorld(true);
+
+        const spawnPosition = new THREE.Vector3();
+        this.spawn.object3D.getWorldPosition(spawnPosition);
+
+        this.player.object3D.position.copy(spawnPosition);
+        this.camera.object3D.position.set(0, 1.6, 0);
+    },
+
+    tick() {
+        if (this.hasEntered) return;
+
+        const doorPosition = new THREE.Vector3();
+        const cameraPosition = new THREE.Vector3();
+
+        this.el.object3D.getWorldPosition(doorPosition);
+        this.camera.object3D.getWorldPosition(cameraPosition);
+
+        const distance = doorPosition.distanceTo(cameraPosition);
+        const near = distance < 2;
+
+        if (near !== this.nearDoor) {
+            this.nearDoor = near;
+
+            this.text.setAttribute(
+                'value',
+                near ? 'Press E to enter' : ''
+            );
+
+            this.text.setAttribute(
+                'visible',
+                near
+            );
+        }
     }
 });
 
-
-/* ==================== 任务纸系统 ==================== */
+/* 任务纸系统 */
 AFRAME.registerComponent('paper-system', {
-    init: function () {
+    init() {
         this.hasPaper = false;
         this.inspecting = false;
         this.nearPaper = false;
+        this.audioContext = null;
 
         this.paper = document.querySelector('#missionPaper');
         this.camera = document.querySelector('#camera');
@@ -149,31 +251,81 @@ AFRAME.registerComponent('paper-system', {
         window.addEventListener('keydown', e => {
             if (e.code !== 'KeyE' || e.repeat) return;
 
-            /* 第一次E：捡起并打开任务纸 */
             if (!this.hasPaper && this.nearPaper) {
+                this.playPaperSound();
+
                 this.hasPaper = true;
                 this.inspecting = true;
 
                 this.paper.setAttribute('visible', false);
                 this.paperUI.setAttribute('visible', true);
                 this.subTask.setAttribute('visible', true);
-
-                /* 地上的捡纸提示消失 */
                 this.hint.setAttribute('value', '');
 
                 return;
             }
 
-            /* 第二次E：关闭任务纸 */
             if (this.hasPaper && this.inspecting) {
                 this.inspecting = false;
                 this.paperUI.setAttribute('visible', false);
-                return;
             }
         });
     },
 
-    tick: function () {
+    /* 捡起纸张声音 */
+    playPaperSound() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const ctx = this.audioContext;
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
+        const now = ctx.currentTime;
+        const duration = 0.42;
+        const bufferSize = Math.floor(ctx.sampleRate * duration);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            const t = i / bufferSize;
+            const envelope = Math.sin(Math.PI * t);
+            const texture = 0.65 + Math.random() * 0.35;
+
+            data[i] = (Math.random() * 2 - 1) * envelope * texture;
+        }
+
+        const source = ctx.createBufferSource();
+        const highpass = ctx.createBiquadFilter();
+        const lowpass = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        source.buffer = buffer;
+
+        highpass.type = 'highpass';
+        highpass.frequency.value = 750;
+
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 4800;
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.42, now + 0.035);
+        gain.gain.linearRampToValueAtTime(0.25, now + 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        source.connect(highpass);
+        highpass.connect(lowpass);
+        lowpass.connect(gain);
+        gain.connect(ctx.destination);
+
+        source.start(now);
+        source.stop(now + duration);
+    },
+
+    tick() {
         if (this.hasPaper) return;
 
         const paperPosition = new THREE.Vector3();
@@ -182,16 +334,15 @@ AFRAME.registerComponent('paper-system', {
         this.paper.object3D.getWorldPosition(paperPosition);
         this.camera.object3D.getWorldPosition(cameraPosition);
 
-        const distance = paperPosition.distanceTo(cameraPosition);
+        const near = paperPosition.distanceTo(cameraPosition) < 1.5;
 
-        if (distance < 1.5) {
-            if (!this.nearPaper) {
-                this.nearPaper = true;
-                this.hint.setAttribute('value', 'Press E to pick up');
-            }
-        } else if (this.nearPaper) {
-            this.nearPaper = false;
-            this.hint.setAttribute('value', '');
+        if (near !== this.nearPaper) {
+            this.nearPaper = near;
+
+            this.hint.setAttribute(
+                'value',
+                near ? 'Press E to pick up' : ''
+            );
         }
     }
 });
@@ -201,231 +352,248 @@ AFRAME.registerComponent('paper-system', {
 <body>
 <a-scene>
 
-<!-- ==================== 天空 ==================== -->
-<a-sky color="#78808f"></a-sky>
+    <!-- 天空 -->
+    <a-sky color="#111111"></a-sky>
 
-<!-- ==================== 模型资源 ==================== -->
-<a-assets>
-    <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
-    <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
-</a-assets>
+    <!-- 模型 -->
+    <a-assets>
+        <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
+        <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
+    </a-assets>
 
-<!-- ==================== 地上的任务纸 ==================== -->
-<a-box
-    id="missionPaper"
-    position="1 -1 3"
-    rotation="0 8 0"
-    width="0.45"
-    height="0.02"
-    depth="0.6"
-    color="#e8e2d3">
-</a-box>
+    <!-- 地上的任务纸 -->
+    <a-box
+        id="missionPaper"
+        position="1 -1 3"
+        rotation="0 8 0"
+        width="0.45"
+        height="0.02"
+        depth="0.6"
+        color="#e8e2d3">
+    </a-box>
 
-<!-- ==================== Hallway ==================== -->
-<a-entity
-    id="hallway"
-    gltf-model="#Hallway"
-    position="0 0 -5"
-    rotation="0 0 0"
-    scale="1 1 1"
-    visible="true">
-</a-entity>
+    <!-- Hallway -->
+    <a-entity
+        id="hallway"
+        gltf-model="#Hallway"
+        position="0 0 -5"
+        visible="true">
+    </a-entity>
 
-<!-- ==================== Room2 ==================== -->
-<a-entity
-    id="room2"
-    gltf-model="#Room2"
-    position="5.5 0 -5"
-    rotation="0 0 0"
-    scale="1 1 1"
-    visible="false">
-</a-entity>
+    <!-- Room2 -->
+    <a-entity
+        id="room2"
+        gltf-model="#Room2"
+        position="5.5 0 -5"
+        visible="false">
 
-<!-- ==================== Room2 门触发区域 ==================== -->
-<a-box
-    id="doorTrigger"
-    class="clickable"
-    position="2.5 1 -1.9"
-    width="0.5"
-    height="4"
-    depth="2"
-    material="transparent: true; opacity: 0"
-    door-interaction>
-</a-box>
-
-<!-- ==================== 黑色墙体 ==================== -->
-<a-box
-    position="0.1 1 -5"
-    width="0.2"
-    height="6"
-    depth="6"
-    color="#000000">
-</a-box>
-
-<a-box
-    position="5 0 -5"
-    width="1"
-    height="7"
-    depth="4"
-    color="#000000">
-</a-box>
-
-<!-- ==================== 玩家 ==================== -->
-<a-entity
-    id="player"
-    position="1 -1.5 5"
-    paper-system>
-
-    <a-camera
-        id="camera"
-        wasd-controls="acceleration: 6"
-        look-controls
-        head-bob>
-
-        <!-- 环境光 -->
         <a-entity
-            light="type: ambient; color: #78808f; intensity: 1.2">
+            id="room2Spawn"
+            position="-1.5 -1.5 1">
         </a-entity>
 
-        <!-- 手电 -->
-        <a-entity
-            light="type: spot; color: #fff1d6; intensity: 3; distance: 18; angle: 45; penumbra: 1; decay: 1">
-        </a-entity>
+    </a-entity>
 
+    <!-- Hallway → Room2 门触发区域 -->
+    <a-box
+        id="doorTrigger"
+        position="2.5 1 -1.9"
+        width="0.5"
+        height="4"
+        depth="2"
+        material="transparent: true; opacity: 0"
+        door-interaction>
+    </a-box>
 
-        <!-- ==================== 左上角任务栏 ==================== -->
-        <a-entity
-            id="taskUI"
-            position="-1.08 0.62 -1"
-            hud-layer>
+    <!-- 黑色墙体 -->
+    <a-box
+        position="0.1 1 -5"
+        width="0.2"
+        height="6"
+        depth="6"
+        color="#000000">
+    </a-box>
 
-            <a-text
-                value="MAIN TASK"
-                position="0 0 0"
-                align="left"
-                anchor="left"
-                width="0.65"
-                color="#aaaaaa"
-                material="shader: flat; depthTest: false; depthWrite: false">
-            </a-text>
+    <a-box
+        position="5 0 -5"
+        width="1"
+        height="7"
+        depth="4"
+        color="#000000">
+    </a-box>
 
-            <a-text
-                value="Escape from here"
-                position="0 -0.06 0"
-                align="left"
-                anchor="left"
-                width="0.78"
-                color="#ffffff"
-                material="shader: flat; depthTest: false; depthWrite: false">
-            </a-text>
+    <!-- 玩家 -->
+    <a-entity
+        id="player"
+        position="1 -1.5 5"
+        paper-system
+        footsteps>
+
+        <a-camera
+            id="camera"
+            wasd-controls="acceleration: 6"
+            look-controls
+            head-bob>
+
+            <!-- 灯光 -->
+            <a-entity
+                light="type: ambient; color: black; intensity: 1.2">
+            </a-entity>
 
             <a-entity
-                id="subTask"
-                visible="false">
+                light="type: spot; color: #fff1d6; intensity: 3; distance: 18; angle: 45; penumbra: 1; decay: 1">
+            </a-entity>
 
+            <!-- 恐怖游戏任务栏 -->
+            <a-entity
+                id="taskUI"
+                position="-1.25 0.78 -1"
+                hud-layer>
+
+                <!-- 黑色半透明背景 -->
+                <a-plane
+                    position="0.20 -0.105 -0.01"
+                    width="0.62"
+                    height="0.27"
+                    material="color: #050505; opacity: 0.72; transparent: true; shader: flat; depthTest: false; depthWrite: false">
+                </a-plane>
+
+                <!-- 左侧暗红线 -->
+                <a-plane
+                    position="-0.105 -0.105 0"
+                    width="0.008"
+                    height="0.27"
+                    material="color: #651919; shader: flat; depthTest: false; depthWrite: false">
+                </a-plane>
+
+                <!-- MAIN TASK -->
                 <a-text
-                    value="SUB TASK"
-                    position="0 -0.16 0"
+                    value="MAIN TASK"
+                    position="-0.075 -0.025 0.01"
+                    align="left"
+                    anchor="left"
+                    width="0.52"
+                    color="#8c3d3d"
+                    material="shader: flat; depthTest: false; depthWrite: false">
+                </a-text>
+
+                <!-- 主任务 -->
+                <a-text
+                    value="ESCAPE FROM HERE"
+                    position="-0.075 -0.075 0.01"
                     align="left"
                     anchor="left"
                     width="0.65"
-                    color="#aaaaaa"
+                    color="#d8d4ca"
+                    material="shader: flat; depthTest: false; depthWrite: false">
+                </a-text>
+
+                <!-- 分割线 -->
+                <a-plane
+                    position="0.19 -0.115 0"
+                    width="0.52"
+                    height="0.002"
+                    material="color: #4a4641; opacity: 0.65; transparent: true; shader: flat; depthTest: false; depthWrite: false">
+                </a-plane>
+
+                <!-- 捡纸后出现的新任务 -->
+                <a-entity
+                    id="subTask"
+                    visible="false">
+
+                    <a-text
+                        value="OBJECTIVE UPDATED"
+                        position="-0.075 -0.15 0.01"
+                        align="left"
+                        anchor="left"
+                        width="0.46"
+                        color="#77736c"
+                        material="shader: flat; depthTest: false; depthWrite: false">
+                    </a-text>
+
+                    <a-text
+                        value="Explore the rooms"
+                        position="-0.075 -0.20 0.01"
+                        align="left"
+                        anchor="left"
+                        width="0.60"
+                        color="#c9c5ba"
+                        material="shader: flat; depthTest: false; depthWrite: false">
+                    </a-text>
+
+                </a-entity>
+            </a-entity>
+
+            <!-- 任务纸阅读界面 -->
+            <a-entity
+                id="paperInspectUI"
+                visible="false"
+                paper-hud>
+
+                <a-plane
+                    id="paperView"
+                    position="0 0 -0.70"
+                    width="0.75"
+                    height="1"
+                    color="#b8aa87"
+                    material="shader: flat; depthTest: false; depthWrite: false">
+                </a-plane>
+
+                <a-text
+                    id="paperText"
+                    value="ROOM CHECK&#10;&#10;GO TO:&#10;&#10;504&#10;506&#10;507&#10;&#10;Check each room.&#10;Do not skip any doors."
+                    position="0 0 -0.69"
+                    align="center"
+                    anchor="center"
+                    baseline="center"
+                    width="0.62"
+                    color="#111111"
                     material="shader: flat; depthTest: false; depthWrite: false">
                 </a-text>
 
                 <a-text
-                    value="Explore the rooms"
-                    position="0 -0.22 0"
-                    align="left"
-                    anchor="left"
-                    width="0.78"
+                    id="closeHint"
+                    value="Press E to close"
+                    position="0 -0.42 -0.68"
+                    align="center"
+                    anchor="center"
+                    width="1"
                     color="#ffffff"
                     material="shader: flat; depthTest: false; depthWrite: false">
                 </a-text>
 
             </a-entity>
-        </a-entity>
 
-
-        <!-- ==================== 任务纸检视界面 ==================== -->
-        <a-entity
-            id="paperInspectUI"
-            visible="false"
-            paper-hud>
-
-            <!-- 背景 -->
-            <a-plane
-                id="paperView"
-                position="0 0 -0.70"
-                width="0.75"
-                height="1"
-                color="#b8aa87"
-                material="shader: flat; depthTest: false; depthWrite: false">
-            </a-plane>
-
-            <!-- 任务内容 -->
+            <!-- 捡纸提示 -->
             <a-text
-                id="paperText"
-                value="ROOM CHECK&#10;&#10;GO TO:&#10;&#10;504&#10;506&#10;507&#10;&#10;Check each room.&#10;Do not skip any doors."
-                position="0 0 -0.69"
+                id="paperHint"
+                value=""
+                position="0 -0.42 -0.60"
                 align="center"
                 anchor="center"
-                baseline="center"
-                width="0.62"
-                color="#111111"
-                material="shader: flat; depthTest: false; depthWrite: false">
-            </a-text>
-
-            <!-- Press E to close：永远在纸张最前面 -->
-            <a-text
-                id="closeHint"
-                value="Press E to close"
-                position="0 -0.42 -0.68"
-                align="center"
-                anchor="center"
-                width="1"
+                width="1.5"
                 color="#ffffff"
-                material="shader: flat; depthTest: false; depthWrite: false">
+                material="shader: flat; depthTest: false">
             </a-text>
 
-        </a-entity>
+            <!-- 准星 -->
+            <a-cursor color="white"></a-cursor>
 
+            <!-- 门交互提示 -->
+            <a-text
+                id="enterText"
+                value=""
+                position="0 -0.25 -0.60"
+                align="center"
+                anchor="center"
+                width="2"
+                color="#ffffff"
+                material="shader: flat; depthTest: false; depthWrite: false"
+                visible="false">
+            </a-text>
 
-        <!-- ==================== 地上捡纸提示 ==================== -->
-        <a-text
-            id="paperHint"
-            value=""
-            position="0 -0.42 -0.60"
-            align="center"
-            anchor="center"
-            width="1.5"
-            color="#ffffff"
-            material="shader: flat; depthTest: false">
-        </a-text>
-
-
-        <!-- ==================== 中央准星 ==================== -->
-        <a-cursor
-            color="white"
-            raycaster="objects: .clickable">
-        </a-cursor>
-
-
-        <!-- ==================== 门提示 ==================== -->
-        <a-text
-            id="enterText"
-            value="Enter?"
-            position="0 -0.25 -0.60"
-            align="center"
-            anchor="center"
-            width="2"
-            color="#ffffff"
-            material="shader: flat; depthTest: false"
-            visible="false">
-        </a-text>
-
-    </a-camera>
-</a-entity>
+        </a-camera>
+    </a-entity>
 
 </a-scene>
 </body>
