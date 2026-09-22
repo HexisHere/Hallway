@@ -359,6 +359,9 @@ AFRAME.registerComponent('paper-system', {
     <a-assets>
         <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
         <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
+
+        <!-- Eye模型 -->
+        <a-asset-item id="Eye" src="eye.glb"></a-asset-item>
     </a-assets>
 
     <!-- 地上的任务纸 -->
@@ -377,6 +380,16 @@ AFRAME.registerComponent('paper-system', {
         id="hallway"
         gltf-model="#Hallway"
         position="0 0 -5"
+        visible="true">
+    </a-entity>
+
+    <!-- Eye模型 -->
+    <a-entity
+        id="eye"
+        gltf-model="#Eye"
+        position="3 -1.5 1"
+        rotation="0 0 0"
+        scale="1 1 1"
         visible="true">
     </a-entity>
 
