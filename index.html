@@ -1,337 +1,432 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<title>Elsewhere</title>
+<script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
 
-    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+<script>
+/* ==================== 走路起伏 ==================== */
+AFRAME.registerComponent('head-bob', {
+    init: function () {
+        this.time = 0;
+        this.offset = 0;
+        this.keys = {};
 
-    <!-- 走路起伏 -->
-    <script>
+        window.addEventListener('keydown', e => {
+            this.keys[e.code] = true;
+        });
 
-    AFRAME.registerComponent('head-bob', {
+        window.addEventListener('keyup', e => {
+            this.keys[e.code] = false;
+        });
+    },
 
-        init: function () {
+    tick: function (time, delta) {
+        const moving =
+            this.keys['KeyW'] ||
+            this.keys['KeyA'] ||
+            this.keys['KeyS'] ||
+            this.keys['KeyD'];
 
-            this.time = 0; 
-            this.keys = {};
-            this.offset = 0;
+        this.el.object3D.position.y -= this.offset;
 
-            window.addEventListener('keydown', (e) => {
-                this.keys[e.code] = true;
+        if (moving) {
+            this.time += delta / 1000;
+            this.offset = Math.sin(this.time * 10) * 0.04;
+        } else {
+            this.offset *= 0.8;
+        }
+
+        this.el.object3D.position.y += this.offset;
+    }
+});
+
+
+/* ==================== 左上角任务栏图层 ==================== */
+AFRAME.registerComponent('hud-layer', {
+    tick: function () {
+        this.el.object3D.traverse(obj => {
+            obj.renderOrder = 900;
+
+            if (obj.material) {
+                obj.material.depthTest = false;
+                obj.material.depthWrite = false;
+            }
+        });
+    }
+});
+
+
+/* ==================== 检视纸张图层 ==================== */
+AFRAME.registerComponent('paper-hud', {
+    tick: function () {
+        const background = document.querySelector('#paperView');
+        const text = document.querySelector('#paperText');
+        const closeHint = document.querySelector('#closeHint');
+
+        if (background) {
+            background.object3D.traverse(obj => {
+                obj.renderOrder = 1000;
+
+                if (obj.material) {
+                    obj.material.depthTest = false;
+                    obj.material.depthWrite = false;
+                }
             });
+        }
 
-            window.addEventListener('keyup', (e) => {
-                this.keys[e.code] = false;
+        if (text) {
+            text.object3D.traverse(obj => {
+                obj.renderOrder = 1001;
+
+                if (obj.material) {
+                    obj.material.depthTest = false;
+                    obj.material.depthWrite = false;
+                }
             });
+        }
 
-        },
+        if (closeHint) {
+            closeHint.object3D.traverse(obj => {
+                obj.renderOrder = 1002;
 
-        tick: function (time, delta) {
-
-            const moving =
-                this.keys['KeyW'] ||
-                this.keys['KeyA'] ||
-                this.keys['KeyS'] ||
-                this.keys['KeyD'];
-
-            // 取消上一帧起伏
-            this.el.object3D.position.y -= this.offset;
+                if (obj.material) {
+                    obj.material.depthTest = false;
+                    obj.material.depthWrite = false;
+                }
+            });
+        }
+    }
+});
 
 
-            if (moving) {
+/* ==================== 门交互 ==================== */
+AFRAME.registerComponent('door-interaction', {
+    init: function () {
+        this.readyToEnter = false;
 
-                this.time += delta / 1000;
-                this.offset =
-                    Math.sin(this.time * 10) * 0.04;
+        this.el.addEventListener('click', () => {
+            const text = document.querySelector('#enterText');
+            const hallway = document.querySelector('#hallway');
+            const room2 = document.querySelector('#room2');
+            const player = document.querySelector('#player');
+            const camera = document.querySelector('#camera');
 
-            } else {
-
-                this.offset *= 0.8;
-
+            if (!this.readyToEnter) {
+                text.setAttribute('visible', true);
+                this.readyToEnter = true;
+                return;
             }
 
+            text.setAttribute('visible', false);
+            hallway.setAttribute('visible', false);
+            room2.setAttribute('visible', true);
 
-            // 添加这一帧起伏
-            this.el.object3D.position.y += this.offset;
+            player.setAttribute('position', '4 -1.5 -1');
 
+            camera.object3D.position.x = 0;
+            camera.object3D.position.y = 1.6;
+            camera.object3D.position.z = 0;
+        });
+    }
+});
+
+
+/* ==================== 任务纸系统 ==================== */
+AFRAME.registerComponent('paper-system', {
+    init: function () {
+        this.hasPaper = false;
+        this.inspecting = false;
+        this.nearPaper = false;
+
+        this.paper = document.querySelector('#missionPaper');
+        this.camera = document.querySelector('#camera');
+        this.hint = document.querySelector('#paperHint');
+        this.paperUI = document.querySelector('#paperInspectUI');
+        this.subTask = document.querySelector('#subTask');
+
+        window.addEventListener('keydown', e => {
+            if (e.code !== 'KeyE' || e.repeat) return;
+
+            /* 第一次E：捡起并打开任务纸 */
+            if (!this.hasPaper && this.nearPaper) {
+                this.hasPaper = true;
+                this.inspecting = true;
+
+                this.paper.setAttribute('visible', false);
+                this.paperUI.setAttribute('visible', true);
+                this.subTask.setAttribute('visible', true);
+
+                /* 地上的捡纸提示消失 */
+                this.hint.setAttribute('value', '');
+
+                return;
+            }
+
+            /* 第二次E：关闭任务纸 */
+            if (this.hasPaper && this.inspecting) {
+                this.inspecting = false;
+                this.paperUI.setAttribute('visible', false);
+                return;
+            }
+        });
+    },
+
+    tick: function () {
+        if (this.hasPaper) return;
+
+        const paperPosition = new THREE.Vector3();
+        const cameraPosition = new THREE.Vector3();
+
+        this.paper.object3D.getWorldPosition(paperPosition);
+        this.camera.object3D.getWorldPosition(cameraPosition);
+
+        const distance = paperPosition.distanceTo(cameraPosition);
+
+        if (distance < 1.5) {
+            if (!this.nearPaper) {
+                this.nearPaper = true;
+                this.hint.setAttribute('value', 'Press E to pick up');
+            }
+        } else if (this.nearPaper) {
+            this.nearPaper = false;
+            this.hint.setAttribute('value', '');
         }
-
-    });
-
-    </script>
-
-    <!-- ======================================== -->
-    <!-- 红色区域交互 -->
-    <!-- 第一次点击：显示 Enter? -->
-    <!-- 第二次点击：进入 Room2 -->
-    <!-- ======================================== -->
-
-    <script>
-
-    AFRAME.registerComponent('door-interaction', {
-
-        init: function () {
-
-            this.readyToEnter = false;
-
-            this.el.addEventListener('click', () => {
-
-                const text =
-                    document.querySelector('#enterText');
-
-                const hallway =
-                    document.querySelector('#hallway');
-
-                const room2 =
-                    document.querySelector('#room2');
-
-                const player =
-                    document.querySelector('#player');
-
-
-                // 第一次点击
-                // 只显示 Enter?
-                if (!this.readyToEnter) {
-
-                    text.setAttribute('visible', true);
-
-                    this.readyToEnter = true;
-
-                    return;
-                }
-
-
-                // 第二次点击
-                // 隐藏 Enter?
-                text.setAttribute('visible', false);
-
-
-                // 隐藏 Hallway
-                hallway.setAttribute('visible', false);
-
-
-                // 显示 Room2
-                room2.setAttribute('visible', true);
-
-
-                // 玩家传送到 Room2
-                player.setAttribute(
-                    'position',
-                    '4 -1.5 -1'
-                );
-
-
-                console.log("Entered Room2");
-
-            });
-
-        }
-
-    });
-
-    </script>
-
-    <!-- ======================================== -->
-    <!-- 调整红色区域位置 -->
-    <!-- ======================================== -->
-
-    <script>
-
-    AFRAME.registerComponent('move-trigger', {
-
-        init: function () {
-
-            window.addEventListener('keydown', (e) => {
-
-                const p =
-                    this.el.object3D.position;
-
-                const step = 0.1;
-
-
-                // 左右
-                if (e.code === 'ArrowLeft')
-                    p.x -= step;
-
-                if (e.code === 'ArrowRight')
-                    p.x += step;
-
-
-                // 前后
-                if (e.code === 'ArrowUp')
-                    p.z -= step;
-
-                if (e.code === 'ArrowDown')
-                    p.z += step;
-
-
-                // 上下
-                if (e.code === 'KeyQ')
-                    p.y += step;
-
-                if (e.code === 'KeyE')
-                    p.y -= step;
-
-
-                console.log(
-                    "Trigger Position:",
-                    p.x.toFixed(2),
-                    p.y.toFixed(2),
-                    p.z.toFixed(2)
-                );
-
-            });
-
-        }
-
-    });
-
-    </script>
+    }
+});
+</script>
 </head>
 
-
 <body>
-
-
 <a-scene>
 
+<!-- ==================== 天空 ==================== -->
+<a-sky color="#78808f"></a-sky>
 
-    <!-- ======================================== -->
-    <!-- 模型资源 -->
-    <!-- ======================================== -->
+<!-- ==================== 模型资源 ==================== -->
+<a-assets>
+    <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
+    <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
+</a-assets>
 
-    <a-assets>
+<!-- ==================== 地上的任务纸 ==================== -->
+<a-box
+    id="missionPaper"
+    position="1 -1 3"
+    rotation="0 8 0"
+    width="0.45"
+    height="0.02"
+    depth="0.6"
+    color="#e8e2d3">
+</a-box>
 
+<!-- ==================== Hallway ==================== -->
+<a-entity
+    id="hallway"
+    gltf-model="#Hallway"
+    position="0 0 -5"
+    rotation="0 0 0"
+    scale="1 1 1"
+    visible="true">
+</a-entity>
 
-        <!-- Hallway -->
-        <a-asset-item
-            id="Hallway" src="Hallway.glb">
-        </a-asset-item>
-
-
-        <!-- Room2 -->
-        <a-asset-item
-            id="Room2" src="Room2.glb">
-        </a-asset-item>
-
-
-    </a-assets>
-
-    <!-- Hallway -->
-    <a-entity
-
-        id="hallway"gltf-model="#Hallway"
-        position="0 0 -5"
-        rotation="0 0 0"
-        scale="1 1 1"
-        visible="true">
-
-    </a-entity>
-
-
-    <!-- Room2 -->
-    <!-- 一开始隐藏 -->
-    <a-entity
+<!-- ==================== Room2 ==================== -->
+<a-entity
     id="room2"
     gltf-model="#Room2"
     position="5.5 0 -5"
     rotation="0 0 0"
     scale="1 1 1"
-    visible="true"
-    move-room>
+    visible="false">
 </a-entity>
 
-    <!-- 红色交互区域 -->
-    <a-box
-
-        id="doorTrigger"
-        class="clickable"
-        position="1.8 1 -2.3"
-        width="0.5"
-        height="4"
-        depth="2"
-        color="red"
-        opacity="0.5"
-        door-interaction>
-
-    </a-box>
-
-    <!-- 黑色墙体 -->
+<!-- ==================== Room2 门触发区域 ==================== -->
 <a-box
-    id="blackWall"
+    id="doorTrigger"
+    class="clickable"
+    position="2.5 1 -1.9"
+    width="0.5"
+    height="4"
+    depth="2"
+    material="transparent: true; opacity: 0"
+    door-interaction>
+</a-box>
+
+<!-- ==================== 黑色墙体 ==================== -->
+<a-box
     position="0.1 1 -5"
     width="0.2"
     height="6"
     depth="6"
-    color="#000000">d
+    color="#000000">
 </a-box>
 
-    <!-- 黑色墙体 -->
-    <a-box
+<a-box
     position="5 0 -5"
     width="1"
     height="7"
     depth="4"
-    color="black">
-
-    
+    color="#000000">
 </a-box>
 
-    <!-- 玩家 -->
-    <a-entity
-
-        id="player" position="1 -1.5 1">
-
-        <a-camera
-            id="camera"
-            wasd-controls="acceleration: 6"
-            look-controls
-            head-bob>
-
-            <!-- 场景基础光 -->
+<!-- ==================== 玩家 ==================== -->
 <a-entity
-    light="
-        type: ambient;
-        color: #78808f;
-        intensity: 0.25
-    ">
-</a-entity>
+    id="player"
+    position="1 -1.5 5"
+    paper-system>
 
-<!-- 玩家手电 -->
-<a-entity
-    light="
-        type: spot;
-        color: #fff1d6;
-        intensity: 3.5;
-        distance: 18;
-        angle: 30;
-        penumbra: 0.95;
-        decay: 1.2
-    "
-    position="0 0 0">
-</a-entity>
+    <a-camera
+        id="camera"
+        wasd-controls="acceleration: 6"
+        look-controls
+        head-bob>
 
-            <!-- 中心准星 -->
+        <!-- 环境光 -->
+        <a-entity
+            light="type: ambient; color: #78808f; intensity: 1.2">
+        </a-entity>
 
-            <a-cursor
-                color="white"
-                raycaster="objects: .clickable">
-            </a-cursor>
+        <!-- 手电 -->
+        <a-entity
+            light="type: spot; color: #fff1d6; intensity: 3; distance: 18; angle: 45; penumbra: 1; decay: 1">
+        </a-entity>
 
-            <!-- Enter 提示 -->
+
+        <!-- ==================== 左上角任务栏 ==================== -->
+        <a-entity
+            id="taskUI"
+            position="-1.08 0.62 -1"
+            hud-layer>
 
             <a-text
-
-                id="enterText" value="Enter?"
-                position="0 -0.25 -1" 
-                align="center"
-                width="2"
-                color="white"
-                visible="false">
-
+                value="MAIN TASK"
+                position="0 0 0"
+                align="left"
+                anchor="left"
+                width="0.65"
+                color="#aaaaaa"
+                material="shader: flat; depthTest: false; depthWrite: false">
             </a-text>
 
-        </a-camera>
+            <a-text
+                value="Escape from here"
+                position="0 -0.06 0"
+                align="left"
+                anchor="left"
+                width="0.78"
+                color="#ffffff"
+                material="shader: flat; depthTest: false; depthWrite: false">
+            </a-text>
 
-    </a-entity>
+            <a-entity
+                id="subTask"
+                visible="false">
+
+                <a-text
+                    value="SUB TASK"
+                    position="0 -0.16 0"
+                    align="left"
+                    anchor="left"
+                    width="0.65"
+                    color="#aaaaaa"
+                    material="shader: flat; depthTest: false; depthWrite: false">
+                </a-text>
+
+                <a-text
+                    value="Explore the rooms"
+                    position="0 -0.22 0"
+                    align="left"
+                    anchor="left"
+                    width="0.78"
+                    color="#ffffff"
+                    material="shader: flat; depthTest: false; depthWrite: false">
+                </a-text>
+
+            </a-entity>
+        </a-entity>
+
+
+        <!-- ==================== 任务纸检视界面 ==================== -->
+        <a-entity
+            id="paperInspectUI"
+            visible="false"
+            paper-hud>
+
+            <!-- 背景 -->
+            <a-plane
+                id="paperView"
+                position="0 0 -0.70"
+                width="0.75"
+                height="1"
+                color="#b8aa87"
+                material="shader: flat; depthTest: false; depthWrite: false">
+            </a-plane>
+
+            <!-- 任务内容 -->
+            <a-text
+                id="paperText"
+                value="ROOM CHECK&#10;&#10;GO TO:&#10;&#10;504&#10;506&#10;507&#10;&#10;Check each room.&#10;Do not skip any doors."
+                position="0 0 -0.69"
+                align="center"
+                anchor="center"
+                baseline="center"
+                width="0.62"
+                color="#111111"
+                material="shader: flat; depthTest: false; depthWrite: false">
+            </a-text>
+
+            <!-- Press E to close：永远在纸张最前面 -->
+            <a-text
+                id="closeHint"
+                value="Press E to close"
+                position="0 -0.42 -0.68"
+                align="center"
+                anchor="center"
+                width="1"
+                color="#ffffff"
+                material="shader: flat; depthTest: false; depthWrite: false">
+            </a-text>
+
+        </a-entity>
+
+
+        <!-- ==================== 地上捡纸提示 ==================== -->
+        <a-text
+            id="paperHint"
+            value=""
+            position="0 -0.42 -0.60"
+            align="center"
+            anchor="center"
+            width="1.5"
+            color="#ffffff"
+            material="shader: flat; depthTest: false">
+        </a-text>
+
+
+        <!-- ==================== 中央准星 ==================== -->
+        <a-cursor
+            color="white"
+            raycaster="objects: .clickable">
+        </a-cursor>
+
+
+        <!-- ==================== 门提示 ==================== -->
+        <a-text
+            id="enterText"
+            value="Enter?"
+            position="0 -0.25 -0.60"
+            align="center"
+            anchor="center"
+            width="2"
+            color="#ffffff"
+            material="shader: flat; depthTest: false"
+            visible="false">
+        </a-text>
+
+    </a-camera>
+</a-entity>
+
 </a-scene>
 </body>
 </html>
