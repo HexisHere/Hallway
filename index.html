@@ -4,1094 +4,615 @@
 <meta charset="UTF-8">
 <title>Elsewhere</title>
 <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
-
 <script>
-const ROOM2_YAW = 0;
+const ROOM2_YAW=0;
+let room2Visited=false;
 
-/* ================================
-   走路起伏
-================================ */
-AFRAME.registerComponent('head-bob', {
-    init() {
-        this.time = 0;
-        this.offset = 0;
-        this.keys = {};
-
-        window.addEventListener('keydown', e => {
-            this.keys[e.code] = true;
-        });
-
-        window.addEventListener('keyup', e => {
-            this.keys[e.code] = false;
-        });
+// 走路起伏
+AFRAME.registerComponent('head-bob',{
+    init(){
+        this.time=0;
+        this.offset=0;
+        this.keys={};
+        window.addEventListener('keydown',e=>this.keys[e.code]=true);
+        window.addEventListener('keyup',e=>this.keys[e.code]=false);
     },
-
-    tick(time, delta) {
-        const moving =
-            this.keys.KeyW ||
-            this.keys.KeyA ||
-            this.keys.KeyS ||
-            this.keys.KeyD;
-
-        this.el.object3D.position.y -= this.offset;
-
-        if (moving) {
-            this.time += delta / 1000;
-            this.offset = Math.sin(this.time * 10) * 0.04;
-        } else {
-            this.offset *= 0.8;
+    tick(time,delta){
+        const moving=this.keys.KeyW||this.keys.KeyA||this.keys.KeyS||this.keys.KeyD;
+        this.el.object3D.position.y-=this.offset;
+        if(moving){
+            this.time+=delta/1000;
+            this.offset=Math.sin(this.time*10)*0.04;
+        }else{
+            this.offset*=0.8;
         }
-
-        this.el.object3D.position.y += this.offset;
+        this.el.object3D.position.y+=this.offset;
     }
 });
 
-/* ================================
-   进入Room2
-   手电闪烁 + 眼睛出现水波纹
-================================ */
-AFRAME.registerComponent('room2-flicker', {
-    init() {
-        this.room2 = document.querySelector('#room2');
-        this.flashlight = document.querySelector('#flashlight');
-        this.eyeRipple = document.querySelector('#eyeRipple');
-
-        this.started = false;
-        this.active = false;
-
-        this.startTime = 0;
-        this.duration = 5000;
-
-        this.lastFlicker = 0;
-        this.nextFlickerDelay = 80;
+// Room2手电闪烁
+AFRAME.registerComponent('room2-flicker',{
+    init(){
+        this.room2=document.querySelector('#room2');
+        this.flashlight=document.querySelector('#flashlight');
+        this.eyeRipple=document.querySelector('#eyeRipple');
+        this.started=false;
+        this.active=false;
+        this.startTime=0;
+        this.duration=5000;
+        this.lastFlicker=0;
+        this.nextFlickerDelay=80;
     },
-
-    tick(time) {
-        if (!this.room2 || !this.flashlight) return;
-
-        if (
-            !this.started &&
-            this.room2.getAttribute('visible')
-        ) {
-            this.started = true;
-            this.active = true;
-            this.startTime = time;
-
-            if (this.eyeRipple) {
-                this.eyeRipple.setAttribute('visible', true);
-            }
+    tick(time){
+        if(!this.room2||!this.flashlight)return;
+        if(!this.started&&this.room2.getAttribute('visible')){
+            this.started=true;
+            this.active=true;
+            this.startTime=time;
+            if(this.eyeRipple)this.eyeRipple.setAttribute('visible',true);
         }
-
-        if (!this.active) return;
-
-        const elapsed = time - this.startTime;
-
-        if (elapsed >= this.duration) {
-            this.active = false;
-
-            const light =
-                this.flashlight.getObject3D('light');
-
-            if (light) {
-                light.intensity = 3;
-            }
-
-            this.flashlight.setAttribute(
-                'light',
-                'intensity',
-                3
-            );
-
+        if(!this.active)return;
+        if(time-this.startTime>=this.duration){
+            this.active=false;
+            const light=this.flashlight.getObject3D('light');
+            if(light)light.intensity=3;
+            this.flashlight.setAttribute('light','intensity',3);
             return;
         }
-
-        if (
-            time - this.lastFlicker >=
-            this.nextFlickerDelay
-        ) {
-            this.lastFlicker = time;
-
-            const random = Math.random();
+        if(time-this.lastFlicker>=this.nextFlickerDelay){
+            this.lastFlicker=time;
+            const random=Math.random();
             let intensity;
-
-            if (random < 0.25) {
-                intensity = 0;
-            } else if (random < 0.50) {
-                intensity =
-                    0.1 +
-                    Math.random() * 0.3;
-            } else if (random < 0.70) {
-                intensity =
-                    0.7 +
-                    Math.random() * 0.8;
-            } else {
-                intensity =
-                    2.5 +
-                    Math.random() * 0.5;
-            }
-
-            const light =
-                this.flashlight.getObject3D('light');
-
-            if (light) {
-                light.intensity = intensity;
-            }
-
-            this.flashlight.setAttribute(
-                'light',
-                'intensity',
-                intensity
-            );
-
-            this.nextFlickerDelay =
-                50 +
-                Math.random() * 150;
+            if(random<0.25)intensity=0;
+            else if(random<0.5)intensity=0.1+Math.random()*0.3;
+            else if(random<0.7)intensity=0.7+Math.random()*0.8;
+            else intensity=2.5+Math.random()*0.5;
+            const light=this.flashlight.getObject3D('light');
+            if(light)light.intensity=intensity;
+            this.flashlight.setAttribute('light','intensity',intensity);
+            this.nextFlickerDelay=50+Math.random()*150;
         }
     }
 });
 
-/* ================================
-   Room2眼睛水波纹
-================================ */
-AFRAME.registerComponent('eye-ripple', {
-    init() {
-        this.ring1 =
-            this.el.querySelector('#eyeRipple1');
-
-        this.ring2 =
-            this.el.querySelector('#eyeRipple2');
-
-        this.ring3 =
-            this.el.querySelector('#eyeRipple3');
+// 眼睛水波纹
+AFRAME.registerComponent('eye-ripple',{
+    init(){
+        this.ring1=this.el.querySelector('#eyeRipple1');
+        this.ring2=this.el.querySelector('#eyeRipple2');
+        this.ring3=this.el.querySelector('#eyeRipple3');
     },
-
-    tick(time) {
-        if (!this.el.getAttribute('visible')) return;
-
-        this.animateRing(
-            this.ring1,
-            time,
-            0
-        );
-
-        this.animateRing(
-            this.ring2,
-            time,
-            500
-        );
-
-        this.animateRing(
-            this.ring3,
-            time,
-            1000
-        );
+    tick(time){
+        if(!this.el.getAttribute('visible'))return;
+        this.animateRing(this.ring1,time,0);
+        this.animateRing(this.ring2,time,500);
+        this.animateRing(this.ring3,time,1000);
     },
-
-    animateRing(ring, time, delay) {
-        if (!ring) return;
-
-        const duration = 1600;
-
-        const cycle =
-            ((time - delay) % duration + duration) %
-            duration;
-
-        const progress =
-            cycle / duration;
-
-        const scale =
-            0.35 +
-            progress * 1.4;
-
-        const opacity =
-            (1 - progress) * 0.8;
-
-        ring.object3D.scale.set(
-            scale,
-            scale,
-            scale
-        );
-
-        const material =
-            ring.getObject3D('mesh')?.material;
-
-        if (material) {
-            material.opacity = opacity;
-            material.transparent = true;
+    animateRing(ring,time,delay){
+        if(!ring)return;
+        const duration=1600;
+        const cycle=((time-delay)%duration+duration)%duration;
+        const progress=cycle/duration;
+        const scale=0.35+progress*1.4;
+        const opacity=(1-progress)*0.8;
+        ring.object3D.scale.set(scale,scale,scale);
+        const material=ring.getObject3D('mesh')?.material;
+        if(material){
+            material.opacity=opacity;
+            material.transparent=true;
         }
     }
 });
 
-/* ================================
-   Room2点击5次
-   → 黑屏
-   → 返回Hallway
-================================ */
-AFRAME.registerComponent('eye-click-return', {
-    init() {
-        this.clickCount = 0;
-        this.requiredClicks = 5;
-        this.finished = false;
-
-        this.room2 =
-            document.querySelector('#room2');
-
-        this.hallway =
-            document.querySelector('#hallway');
-
-        this.player =
-            document.querySelector('#player');
-
-        this.camera =
-            document.querySelector('#camera');
-
-        this.eyeRipple =
-            document.querySelector('#eyeRipple');
-
-        this.blackScreen =
-            document.querySelector('#blackScreen');
-
-        window.addEventListener('mousedown', e => {
-            if (e.button !== 0) return;
-
+// Room2点击5次返回Hallway
+AFRAME.registerComponent('eye-click-return',{
+    init(){
+        this.clickCount=0;
+        this.requiredClicks=5;
+        this.finished=false;
+        this.room2=document.querySelector('#room2');
+        this.hallway=document.querySelector('#hallway');
+        this.player=document.querySelector('#player');
+        this.camera=document.querySelector('#camera');
+        this.eyeRipple=document.querySelector('#eyeRipple');
+        this.blackScreen=document.querySelector('#blackScreen');
+        window.addEventListener('mousedown',e=>{
+            if(e.button!==0)return;
             this.handleClick();
         });
     },
-
-    handleClick() {
-        if (this.finished) return;
-
-        /* 必须已经进入Room2 */
-        if (
-            !this.room2 ||
-            !this.room2.getAttribute('visible')
-        ) {
-            return;
-        }
-
-        /* 必须等水波纹出现 */
-        if (
-            !this.eyeRipple ||
-            !this.eyeRipple.getAttribute('visible')
-        ) {
-            return;
-        }
-
+    handleClick(){
+        if(this.finished)return;
+        if(!this.room2||!this.room2.getAttribute('visible'))return;
+        if(!this.eyeRipple||!this.eyeRipple.getAttribute('visible'))return;
         this.clickCount++;
-
-        console.log(
-            'Room2 click:',
-            this.clickCount
-        );
-
-        /* 点击反馈 */
-        this.eyeRipple.object3D.scale.set(
-            1.25,
-            1.25,
-            1.25
-        );
-
-        setTimeout(() => {
-            if (this.eyeRipple) {
-                this.eyeRipple.object3D.scale.set(
-                    1,
-                    1,
-                    1
-                );
+        this.eyeRipple.object3D.scale.set(1.25,1.25,1.25);
+        setTimeout(()=>{
+            if(this.eyeRipple)this.eyeRipple.object3D.scale.set(1,1,1);
+        },80);
+        if(this.clickCount>=this.requiredClicks){
+            this.finished=true;
+            this.startFadeOut();
+        }
+    },
+    startFadeOut(){
+        if(this.eyeRipple)this.eyeRipple.setAttribute('visible',false);
+        if(!this.blackScreen)return;
+        this.blackScreen.setAttribute('visible',true);
+        this.blackScreen.setAttribute('material','opacity',0);
+        this.blackScreen.object3D.traverse(obj=>{
+            obj.renderOrder=99999;
+            if(obj.material){
+                obj.material.depthTest=false;
+                obj.material.depthWrite=false;
+                obj.material.transparent=true;
             }
-        }, 80);
-
-        if (
-            this.clickCount >=
-            this.requiredClicks
-        ) {
-            this.finished = true;
-            this.startBlackout();
-        }
+        });
+        const duration=1800;
+        const startTime=performance.now();
+        const fade=now=>{
+            const progress=Math.min((now-startTime)/duration,1);
+            const eased=progress*progress*(3-2*progress);
+            this.blackScreen.setAttribute('material','opacity',eased);
+            if(progress<1)requestAnimationFrame(fade);
+            else setTimeout(()=>this.returnToHallway(),1500);
+        };
+        requestAnimationFrame(fade);
     },
-
-    startBlackout() {
-        console.log('BLACKOUT START');
-
-        if (this.eyeRipple) {
-            this.eyeRipple.setAttribute(
-                'visible',
-                false
-            );
+    returnToHallway(){
+        this.room2.setAttribute('visible',false);
+        this.hallway.setAttribute('visible',true);
+        this.player.object3D.position.set(1,-1.5,5);
+        this.camera.object3D.position.set(0,1.6,0);
+        const lookControls=this.camera.components['look-controls'];
+        if(lookControls){
+            lookControls.yawObject.rotation.y=0;
+            lookControls.pitchObject.rotation.x=0;
         }
-
-        if (this.blackScreen) {
-            this.blackScreen.setAttribute(
-                'visible',
-                true
-            );
-
-            this.blackScreen.object3D.traverse(obj => {
-                obj.renderOrder = 99999;
-
-                if (obj.material) {
-                    obj.material.depthTest = false;
-                    obj.material.depthWrite = false;
-                }
-            });
-        }
-
-        setTimeout(() => {
-            this.returnToHallway();
-        }, 3000);
-    },
-
-    returnToHallway() {
-        console.log('RETURN TO HALLWAY');
-
-        this.room2.setAttribute(
-            'visible',
-            false
-        );
-
-        this.hallway.setAttribute(
-            'visible',
-            true
-        );
-
-        this.player.object3D.position.set(
-            1,
-            -1.5,
-            5
-        );
-
-        this.camera.object3D.position.set(
-            0,
-            1.6,
-            0
-        );
-
-        const lookControls =
-            this.camera.components['look-controls'];
-
-        if (lookControls) {
-            lookControls.yawObject.rotation.y = 0;
-            lookControls.pitchObject.rotation.x = 0;
-        }
-
         this.player.object3D.updateMatrixWorld(true);
         this.camera.object3D.updateMatrixWorld(true);
-
-        setTimeout(() => {
-            if (this.blackScreen) {
-                this.blackScreen.setAttribute(
-                    'visible',
-                    false
-                );
+        setTimeout(()=>this.startFadeIn(),500);
+    },
+    startFadeIn(){
+        if(!this.blackScreen)return;
+        const duration=2200;
+        const startTime=performance.now();
+        const fade=now=>{
+            const progress=Math.min((now-startTime)/duration,1);
+            const eased=progress*progress*(3-2*progress);
+            this.blackScreen.setAttribute('material','opacity',1-eased);
+            if(progress<1)requestAnimationFrame(fade);
+            else{
+                this.blackScreen.setAttribute('material','opacity',0);
+                this.blackScreen.setAttribute('visible',false);
             }
-        }, 500);
+        };
+        requestAnimationFrame(fade);
     }
 });
 
-/* ================================
-   脚步声
-================================ */
-AFRAME.registerComponent('footsteps', {
-    init() {
-        this.keys = {};
-        this.stepTimer = 0;
-        this.stepInterval = 0.58;
-        this.audioContext = null;
-
-        window.addEventListener('keydown', e => {
-            if (
-                ![
-                    'KeyW',
-                    'KeyA',
-                    'KeyS',
-                    'KeyD'
-                ].includes(e.code)
-            ) {
-                return;
-            }
-
-            this.keys[e.code] = true;
-
-            if (!this.audioContext) {
-                this.audioContext = new (
-                    window.AudioContext ||
-                    window.webkitAudioContext
-                )();
-            }
-
-            if (
-                this.audioContext.state ===
-                'suspended'
-            ) {
-                this.audioContext.resume();
-            }
+// 脚步声
+AFRAME.registerComponent('footsteps',{
+    init(){
+        this.keys={};
+        this.stepTimer=0;
+        this.stepInterval=0.58;
+        this.audioContext=null;
+        window.addEventListener('keydown',e=>{
+            if(!['KeyW','KeyA','KeyS','KeyD'].includes(e.code))return;
+            this.keys[e.code]=true;
+            if(!this.audioContext)this.audioContext=new(window.AudioContext||window.webkitAudioContext)();
+            if(this.audioContext.state==='suspended')this.audioContext.resume();
         });
-
-        window.addEventListener('keyup', e => {
-            if (
-                [
-                    'KeyW',
-                    'KeyA',
-                    'KeyS',
-                    'KeyD'
-                ].includes(e.code)
-            ) {
-                this.keys[e.code] = false;
-            }
+        window.addEventListener('keyup',e=>{
+            if(['KeyW','KeyA','KeyS','KeyD'].includes(e.code))this.keys[e.code]=false;
         });
     },
-
-    playStep() {
-        if (!this.audioContext) return;
-
-        const ctx = this.audioContext;
-        const now = ctx.currentTime;
-        const duration = 0.18;
-
-        const bufferSize =
-            Math.floor(
-                ctx.sampleRate *
-                duration
-            );
-
-        const buffer =
-            ctx.createBuffer(
-                1,
-                bufferSize,
-                ctx.sampleRate
-            );
-
-        const data =
-            buffer.getChannelData(0);
-
-        for (
-            let i = 0;
-            i < bufferSize;
-            i++
-        ) {
-            const fade =
-                Math.pow(
-                    1 - i / bufferSize,
-                    3
-                );
-
-            data[i] =
-                (Math.random() * 2 - 1) *
-                fade;
+    playStep(){
+        if(!this.audioContext)return;
+        const ctx=this.audioContext;
+        const now=ctx.currentTime;
+        const duration=0.18;
+        const bufferSize=Math.floor(ctx.sampleRate*duration);
+        const buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
+        const data=buffer.getChannelData(0);
+        for(let i=0;i<bufferSize;i++){
+            const fade=Math.pow(1-i/bufferSize,3);
+            data[i]=(Math.random()*2-1)*fade;
         }
-
-        const source =
-            ctx.createBufferSource();
-
-        const lowpass =
-            ctx.createBiquadFilter();
-
-        const bass =
-            ctx.createBiquadFilter();
-
-        const lowShelf =
-            ctx.createBiquadFilter();
-
-        const gain =
-            ctx.createGain();
-
-        source.buffer = buffer;
-
-        lowpass.type = 'lowpass';
-
-        lowpass.frequency.value =
-            260 +
-            Math.random() * 90;
-
-        lowpass.Q.value = 0.8;
-
-        bass.type = 'peaking';
-
-        bass.frequency.value =
-            90 +
-            Math.random() * 20;
-
-        bass.Q.value = 1.2;
-        bass.gain.value = 11;
-
-        lowShelf.type = 'lowshelf';
-        lowShelf.frequency.value = 180;
-        lowShelf.gain.value = 8;
-
-        const volume =
-            0.65 +
-            Math.random() * 0.025;
-
-        gain.gain.setValueAtTime(
-            0.001,
-            now
-        );
-
-        gain.gain.linearRampToValueAtTime(
-            volume,
-            now + 0.012
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
-            0.001,
-            now + duration
-        );
-
+        const source=ctx.createBufferSource();
+        const lowpass=ctx.createBiquadFilter();
+        const bass=ctx.createBiquadFilter();
+        const lowShelf=ctx.createBiquadFilter();
+        const gain=ctx.createGain();
+        source.buffer=buffer;
+        lowpass.type='lowpass';
+        lowpass.frequency.value=260+Math.random()*90;
+        lowpass.Q.value=0.8;
+        bass.type='peaking';
+        bass.frequency.value=90+Math.random()*20;
+        bass.Q.value=1.2;
+        bass.gain.value=11;
+        lowShelf.type='lowshelf';
+        lowShelf.frequency.value=180;
+        lowShelf.gain.value=8;
+        const volume=0.65+Math.random()*0.025;
+        gain.gain.setValueAtTime(0.001,now);
+        gain.gain.linearRampToValueAtTime(volume,now+0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001,now+duration);
         source.connect(lowpass);
         lowpass.connect(bass);
         bass.connect(lowShelf);
         lowShelf.connect(gain);
         gain.connect(ctx.destination);
-
         source.start(now);
-
-        source.stop(
-            now + duration
-        );
+        source.stop(now+duration);
     },
-
-    tick(time, delta) {
-        const moving =
-            this.keys.KeyW ||
-            this.keys.KeyA ||
-            this.keys.KeyS ||
-            this.keys.KeyD;
-
-        if (!moving) {
-            this.stepTimer = 0;
+    tick(time,delta){
+        const moving=this.keys.KeyW||this.keys.KeyA||this.keys.KeyS||this.keys.KeyD;
+        if(!moving){
+            this.stepTimer=0;
             return;
         }
-
-        this.stepTimer +=
-            delta / 1000;
-
-        if (
-            this.stepTimer >=
-            this.stepInterval
-        ) {
-            this.stepTimer = 0;
+        this.stepTimer+=delta/1000;
+        if(this.stepTimer>=this.stepInterval){
+            this.stepTimer=0;
             this.playStep();
         }
     }
 });
 
-/* ================================
-   HUD层级
-================================ */
-AFRAME.registerComponent('hud-layer', {
-    tick() {
-        this.el.object3D.traverse(obj => {
-            obj.renderOrder = 900;
-
-            if (obj.material) {
-                obj.material.depthTest = false;
-                obj.material.depthWrite = false;
+// HUD层级
+AFRAME.registerComponent('hud-layer',{
+    tick(){
+        this.el.object3D.traverse(obj=>{
+            obj.renderOrder=900;
+            if(obj.material){
+                obj.material.depthTest=false;
+                obj.material.depthWrite=false;
             }
         });
     }
 });
 
-/* ================================
-   纸张UI层级
-================================ */
-AFRAME.registerComponent('paper-hud', {
-    tick() {
-        const setLayer =
-            (selector, order) => {
-
-                const el =
-                    document.querySelector(
-                        selector
-                    );
-
-                if (!el) return;
-
-                el.object3D.traverse(obj => {
-                    obj.renderOrder = order;
-
-                    if (obj.material) {
-                        obj.material.depthTest = false;
-                        obj.material.depthWrite = false;
-                    }
-                });
-            };
-
-        setLayer(
-            '#paperView',
-            1000
-        );
-
-        setLayer(
-            '#paperText',
-            1001
-        );
-
-        setLayer(
-            '#closeHint',
-            1002
-        );
+// 任务纸UI层级
+AFRAME.registerComponent('paper-hud',{
+    tick(){
+        const setLayer=(selector,order)=>{
+            const el=document.querySelector(selector);
+            if(!el)return;
+            el.object3D.traverse(obj=>{
+                obj.renderOrder=order;
+                if(obj.material){
+                    obj.material.depthTest=false;
+                    obj.material.depthWrite=false;
+                }
+            });
+        };
+        setLayer('#paperView',1000);
+        setLayer('#paperText',1001);
+        setLayer('#closeHint',1002);
     }
 });
 
-/* ================================
-   Hallway → Room2
-================================ */
-AFRAME.registerComponent('door-interaction', {
-    init() {
-        this.nearDoor = false;
-        this.hasEntered = false;
-
-        this.player =
-            document.querySelector(
-                '#player'
-            );
-
-        this.camera =
-            document.querySelector(
-                '#camera'
-            );
-
-        this.hallway =
-            document.querySelector(
-                '#hallway'
-            );
-
-        this.room2 =
-            document.querySelector(
-                '#room2'
-            );
-
-        this.spawn =
-            document.querySelector(
-                '#room2Spawn'
-            );
-
-        this.text =
-            document.querySelector(
-                '#enterText'
-            );
-
-        this.doorSound =
-            document.querySelector(
-                '#doorCreakSound'
-            );
-
-        window.addEventListener(
-            'keydown',
-            e => {
-                if (
-                    e.code !== 'KeyE' ||
-                    e.repeat
-                ) {
-                    return;
-                }
-
-                if (
-                    !this.nearDoor ||
-                    this.hasEntered
-                ) {
-                    return;
-                }
-
-                this.enterRoom();
-            }
-        );
+// Hallway进入Room2
+AFRAME.registerComponent('door-interaction',{
+    init(){
+        this.nearDoor=false;
+        this.hasEntered=false;
+        this.player=document.querySelector('#player');
+        this.camera=document.querySelector('#camera');
+        this.hallway=document.querySelector('#hallway');
+        this.room2=document.querySelector('#room2');
+        this.spawn=document.querySelector('#room2Spawn');
+        this.text=document.querySelector('#enterText');
+        this.doorSound=document.querySelector('#doorCreakSound');
+        window.addEventListener('keydown',e=>{
+            if(e.code!=='KeyE'||e.repeat)return;
+            if(!this.nearDoor||this.hasEntered)return;
+            this.enterRoom();
+        });
     },
+    enterRoom(){
+        this.hasEntered=true;
+        this.nearDoor=false;
 
-    enterRoom() {
-        this.hasEntered = true;
-        this.nearDoor = false;
+        // 真正进入Room2后解锁Room3
+        room2Visited=true;
 
-        if (this.doorSound) {
-            this.doorSound.currentTime = 0;
-            this.doorSound.volume = 0.75;
-
-            this.doorSound
-                .play()
-                .catch(() => {});
+        if(this.doorSound){
+            this.doorSound.currentTime=0;
+            this.doorSound.volume=0.75;
+            this.doorSound.play().catch(()=>{});
         }
 
-        this.text.setAttribute(
-            'value',
-            ''
-        );
+        this.text.setAttribute('value','');
+        this.text.setAttribute('visible',false);
+        this.hallway.setAttribute('visible',false);
+        this.room2.setAttribute('visible',true);
+        this.room2.object3D.updateMatrixWorld(true);
 
-        this.text.setAttribute(
-            'visible',
-            false
-        );
+        const spawnPosition=new THREE.Vector3();
+        this.spawn.object3D.getWorldPosition(spawnPosition);
+        this.player.object3D.position.copy(spawnPosition);
+        this.camera.object3D.position.set(0,1.6,0);
 
-        this.hallway.setAttribute(
-            'visible',
-            false
-        );
-
-        this.room2.setAttribute(
-            'visible',
-            true
-        );
-
-        this.room2.object3D
-            .updateMatrixWorld(true);
-
-        const spawnPosition =
-            new THREE.Vector3();
-
-        this.spawn.object3D
-            .getWorldPosition(
-                spawnPosition
-            );
-
-        this.player.object3D
-            .position
-            .copy(
-                spawnPosition
-            );
-
-        this.camera.object3D
-            .position
-            .set(
-                0,
-                1.6,
-                0
-            );
-
-        const lookControls =
-            this.camera
-                .components[
-                    'look-controls'
-                ];
-
-        if (lookControls) {
-            lookControls
-                .yawObject
-                .rotation
-                .y =
-                THREE.MathUtils
-                    .degToRad(
-                        ROOM2_YAW
-                    );
-
-            lookControls
-                .pitchObject
-                .rotation
-                .x = 0;
+        const lookControls=this.camera.components['look-controls'];
+        if(lookControls){
+            lookControls.yawObject.rotation.y=THREE.MathUtils.degToRad(ROOM2_YAW);
+            lookControls.pitchObject.rotation.x=0;
         }
     },
-
-    tick() {
-        if (this.hasEntered) return;
-
-        const doorPosition =
-            new THREE.Vector3();
-
-        const cameraPosition =
-            new THREE.Vector3();
-
-        this.el.object3D
-            .getWorldPosition(
-                doorPosition
-            );
-
-        this.camera.object3D
-            .getWorldPosition(
-                cameraPosition
-            );
-
-        const distance =
-            doorPosition
-                .distanceTo(
-                    cameraPosition
-                );
-
-        const near =
-            distance < 2;
-
-        if (
-            near !==
-            this.nearDoor
-        ) {
-            this.nearDoor = near;
-
-            this.text.setAttribute(
-                'value',
-                near
-                    ? 'Press E to enter'
-                    : ''
-            );
-
-            this.text.setAttribute(
-                'visible',
-                near
-            );
+    tick(){
+        if(this.hasEntered)return;
+        const doorPosition=new THREE.Vector3();
+        const cameraPosition=new THREE.Vector3();
+        this.el.object3D.getWorldPosition(doorPosition);
+        this.camera.object3D.getWorldPosition(cameraPosition);
+        const near=doorPosition.distanceTo(cameraPosition)<2;
+        if(near!==this.nearDoor){
+            this.nearDoor=near;
+            this.text.setAttribute('value',near?'Press E to enter':'');
+            this.text.setAttribute('visible',near);
         }
     }
 });
 
-/* ================================
-   任务纸系统
-================================ */
-AFRAME.registerComponent('paper-system', {
-    init() {
-        this.hasPaper = false;
-        this.inspecting = false;
-        this.nearPaper = false;
-        this.audioContext = null;
+// Hallway进入Room3，必须先进入Room2
+AFRAME.registerComponent('room3-door-interaction',{
+    init(){
+        this.nearDoor=false;
+        this.player=document.querySelector('#player');
+        this.camera=document.querySelector('#camera');
+        this.hallway=document.querySelector('#hallway');
+        this.room3=document.querySelector('#room3');
+        this.spawn=document.querySelector('#room3Spawn');
+        this.text=document.querySelector('#enterText');
+        this.doorSound=document.querySelector('#doorCreakSound');
 
-        this.paper =
-            document.querySelector(
-                '#missionPaper'
-            );
-
-        this.camera =
-            document.querySelector(
-                '#camera'
-            );
-
-        this.hint =
-            document.querySelector(
-                '#paperHint'
-            );
-
-        this.paperUI =
-            document.querySelector(
-                '#paperInspectUI'
-            );
-
-        this.subTask =
-            document.querySelector(
-                '#subTask'
-            );
-
-        window.addEventListener(
-            'keydown',
-            e => {
-                if (
-                    e.code !== 'KeyE' ||
-                    e.repeat
-                ) {
-                    return;
-                }
-
-                if (
-                    !this.hasPaper &&
-                    this.nearPaper
-                ) {
-                    this.playPaperSound();
-
-                    this.hasPaper = true;
-                    this.inspecting = true;
-
-                    this.paper.setAttribute(
-                        'visible',
-                        false
-                    );
-
-                    this.paperUI.setAttribute(
-                        'visible',
-                        true
-                    );
-
-                    this.subTask.setAttribute(
-                        'visible',
-                        true
-                    );
-
-                    this.hint.setAttribute(
-                        'value',
-                        ''
-                    );
-
-                    return;
-                }
-
-                if (
-                    this.hasPaper &&
-                    this.inspecting
-                ) {
-                    this.inspecting = false;
-
-                    this.paperUI.setAttribute(
-                        'visible',
-                        false
-                    );
-                }
-            }
-        );
+        window.addEventListener('keydown',e=>{
+            if(e.code!=='KeyE'||e.repeat)return;
+            if(!room2Visited||!this.nearDoor)return;
+            this.enterRoom();
+        });
     },
+    enterRoom(){
+        this.nearDoor=false;
 
-    playPaperSound() {
-        if (!this.audioContext) {
-            this.audioContext =
-                new (
-                    window.AudioContext ||
-                    window.webkitAudioContext
-                )();
+        if(this.doorSound){
+            this.doorSound.currentTime=0;
+            this.doorSound.volume=0.75;
+            this.doorSound.play().catch(()=>{});
         }
 
-        const ctx =
-            this.audioContext;
+        this.text.setAttribute('value','');
+        this.text.setAttribute('visible',false);
+        this.hallway.setAttribute('visible',false);
+        this.room3.setAttribute('visible',true);
+        this.room3.object3D.updateMatrixWorld(true);
 
-        if (
-            ctx.state ===
-            'suspended'
-        ) {
-            ctx.resume();
+        const spawnPosition=new THREE.Vector3();
+        this.spawn.object3D.getWorldPosition(spawnPosition);
+        this.player.object3D.position.copy(spawnPosition);
+        this.camera.object3D.position.set(0,1.6,0);
+
+        const lookControls=this.camera.components['look-controls'];
+        if(lookControls){
+            lookControls.yawObject.rotation.y=0;
+            lookControls.pitchObject.rotation.x=0;
         }
 
-        const now =
-            ctx.currentTime;
-
-        const duration =
-            0.42;
-
-        const bufferSize =
-            Math.floor(
-                ctx.sampleRate *
-                duration
-            );
-
-        const buffer =
-            ctx.createBuffer(
-                1,
-                bufferSize,
-                ctx.sampleRate
-            );
-
-        const data =
-            buffer.getChannelData(0);
-
-        for (
-            let i = 0;
-            i < bufferSize;
-            i++
-        ) {
-            const t =
-                i / bufferSize;
-
-            const envelope =
-                Math.sin(
-                    Math.PI * t
-                );
-
-            const texture =
-                0.65 +
-                Math.random() *
-                0.35;
-
-            data[i] =
-                (Math.random() * 2 - 1) *
-                envelope *
-                texture;
+        this.player.object3D.updateMatrixWorld(true);
+        this.camera.object3D.updateMatrixWorld(true);
+    },
+    tick(){
+        // Room2没进入过时Room3完全锁定
+        if(!room2Visited){
+            this.nearDoor=false;
+            return;
         }
 
-        const source =
-            ctx.createBufferSource();
+        if(!this.hallway.getAttribute('visible')){
+            if(this.nearDoor){
+                this.nearDoor=false;
+                this.text.setAttribute('value','');
+                this.text.setAttribute('visible',false);
+            }
+            return;
+        }
 
-        const highpass =
-            ctx.createBiquadFilter();
+        const doorPosition=new THREE.Vector3();
+        const cameraPosition=new THREE.Vector3();
+        this.el.object3D.getWorldPosition(doorPosition);
+        this.camera.object3D.getWorldPosition(cameraPosition);
+        const near=doorPosition.distanceTo(cameraPosition)<2;
 
-        const lowpass =
-            ctx.createBiquadFilter();
+        if(near!==this.nearDoor){
+            this.nearDoor=near;
+            this.text.setAttribute('value',near?'Press E to enter':'');
+            this.text.setAttribute('visible',near);
+        }
+    }
+});
 
-        const gain =
-            ctx.createGain();
+// 任务纸系统
+AFRAME.registerComponent('paper-system',{
+    init(){
+        this.hasPaper=false;
+        this.inspecting=false;
+        this.nearPaper=false;
+        this.animating=false;
+        this.audioContext=null;
+        this.paper=document.querySelector('#missionPaper');
+        this.camera=document.querySelector('#camera');
+        this.hint=document.querySelector('#paperHint');
+        this.paperUI=document.querySelector('#paperInspectUI');
+        this.subTask=document.querySelector('#subTask');
+        this.setPaperHiddenTransform();
 
-        source.buffer =
-            buffer;
+        window.addEventListener('keydown',e=>{
+            if(e.code!=='KeyF'||e.repeat)return;
+            if(this.animating)return;
 
-        highpass.type =
-            'highpass';
+            if(!this.hasPaper&&this.nearPaper){
+                this.pickUpPaper();
+                return;
+            }
 
-        highpass.frequency.value =
-            750;
+            if(!this.hasPaper)return;
 
-        lowpass.type =
-            'lowpass';
+            if(this.inspecting)this.hidePaper();
+            else this.showPaper();
+        });
+    },
+    pickUpPaper(){
+        this.hasPaper=true;
+        this.inspecting=false;
+        this.paper.setAttribute('visible',false);
+        this.subTask.setAttribute('visible',true);
+        this.hint.setAttribute('value','');
+        this.showPaper();
+    },
+    showPaper(){
+        if(this.animating)return;
+        this.playPaperSound();
+        this.animating=true;
+        this.inspecting=true;
+        this.paperUI.setAttribute('visible',true);
 
-        lowpass.frequency.value =
-            4800;
+        const startPos=new THREE.Vector3(0.42,-0.50,0);
+        const endPos=new THREE.Vector3(0,0,0);
+        const startScale=0.42;
+        const endScale=1;
+        const startRotation=18;
+        const endRotation=0;
 
-        gain.gain.setValueAtTime(
-            0.001,
-            now
-        );
+        this.paperUI.object3D.position.copy(startPos);
+        this.paperUI.object3D.scale.set(startScale,startScale,startScale);
+        this.paperUI.object3D.rotation.z=THREE.MathUtils.degToRad(startRotation);
 
-        gain.gain.linearRampToValueAtTime(
-            0.42,
-            now + 0.035
-        );
+        const duration=350;
+        const startTime=performance.now();
 
-        gain.gain.linearRampToValueAtTime(
-            0.25,
-            now + 0.18
-        );
+        const animate=now=>{
+            const progress=Math.min((now-startTime)/duration,1);
+            const eased=1-Math.pow(1-progress,3);
 
-        gain.gain.exponentialRampToValueAtTime(
-            0.001,
-            now + duration
-        );
+            this.paperUI.object3D.position.lerpVectors(startPos,endPos,eased);
 
-        source.connect(
-            highpass
-        );
+            const scale=startScale+(endScale-startScale)*eased;
+            this.paperUI.object3D.scale.set(scale,scale,scale);
 
-        highpass.connect(
-            lowpass
-        );
+            const rotation=startRotation+(endRotation-startRotation)*eased;
+            this.paperUI.object3D.rotation.z=THREE.MathUtils.degToRad(rotation);
 
-        lowpass.connect(
-            gain
-        );
+            if(progress<1)requestAnimationFrame(animate);
+            else this.animating=false;
+        };
 
-        gain.connect(
-            ctx.destination
-        );
+        requestAnimationFrame(animate);
+    },
+    hidePaper(){
+        if(this.animating)return;
+        this.animating=true;
+
+        const startPos=new THREE.Vector3(0,0,0);
+        const endPos=new THREE.Vector3(0.42,-0.50,0);
+        const startScale=1;
+        const endScale=0.42;
+        const startRotation=0;
+        const endRotation=18;
+        const duration=250;
+        const startTime=performance.now();
+
+        const animate=now=>{
+            const progress=Math.min((now-startTime)/duration,1);
+            const eased=progress*progress*progress;
+
+            this.paperUI.object3D.position.lerpVectors(startPos,endPos,eased);
+
+            const scale=startScale+(endScale-startScale)*eased;
+            this.paperUI.object3D.scale.set(scale,scale,scale);
+
+            const rotation=startRotation+(endRotation-startRotation)*eased;
+            this.paperUI.object3D.rotation.z=THREE.MathUtils.degToRad(rotation);
+
+            if(progress<1){
+                requestAnimationFrame(animate);
+            }else{
+                this.inspecting=false;
+                this.animating=false;
+                this.paperUI.setAttribute('visible',false);
+                this.setPaperHiddenTransform();
+            }
+        };
+
+        requestAnimationFrame(animate);
+    },
+    setPaperHiddenTransform(){
+        if(!this.paperUI)return;
+        this.paperUI.object3D.position.set(0.42,-0.50,0);
+        this.paperUI.object3D.scale.set(0.42,0.42,0.42);
+        this.paperUI.object3D.rotation.z=THREE.MathUtils.degToRad(18);
+    },
+    playPaperSound(){
+        if(!this.audioContext){
+            this.audioContext=new(window.AudioContext||window.webkitAudioContext)();
+        }
+
+        const ctx=this.audioContext;
+        if(ctx.state==='suspended')ctx.resume();
+
+        const now=ctx.currentTime;
+        const duration=0.42;
+        const bufferSize=Math.floor(ctx.sampleRate*duration);
+        const buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
+        const data=buffer.getChannelData(0);
+
+        for(let i=0;i<bufferSize;i++){
+            const t=i/bufferSize;
+            const envelope=Math.sin(Math.PI*t);
+            const texture=0.65+Math.random()*0.35;
+            data[i]=(Math.random()*2-1)*envelope*texture;
+        }
+
+        const source=ctx.createBufferSource();
+        const highpass=ctx.createBiquadFilter();
+        const lowpass=ctx.createBiquadFilter();
+        const gain=ctx.createGain();
+
+        source.buffer=buffer;
+        highpass.type='highpass';
+        highpass.frequency.value=750;
+        lowpass.type='lowpass';
+        lowpass.frequency.value=4800;
+
+        gain.gain.setValueAtTime(0.001,now);
+        gain.gain.linearRampToValueAtTime(0.42,now+0.035);
+        gain.gain.linearRampToValueAtTime(0.25,now+0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001,now+duration);
+
+        source.connect(highpass);
+        highpass.connect(lowpass);
+        lowpass.connect(gain);
+        gain.connect(ctx.destination);
 
         source.start(now);
-
-        source.stop(
-            now + duration
-        );
+        source.stop(now+duration);
     },
+    tick(){
+        if(this.hasPaper)return;
 
-    tick() {
-        if (this.hasPaper) return;
+        const paperPosition=new THREE.Vector3();
+        const cameraPosition=new THREE.Vector3();
+        this.paper.object3D.getWorldPosition(paperPosition);
+        this.camera.object3D.getWorldPosition(cameraPosition);
 
-        const paperPosition =
-            new THREE.Vector3();
+        const near=paperPosition.distanceTo(cameraPosition)<1.5;
 
-        const cameraPosition =
-            new THREE.Vector3();
-
-        this.paper.object3D
-            .getWorldPosition(
-                paperPosition
-            );
-
-        this.camera.object3D
-            .getWorldPosition(
-                cameraPosition
-            );
-
-        const near =
-            paperPosition
-                .distanceTo(
-                    cameraPosition
-                ) < 1.5;
-
-        if (
-            near !==
-            this.nearPaper
-        ) {
-            this.nearPaper = near;
-
-            this.hint.setAttribute(
-                'value',
-                near
-                    ? 'Press E to pick up'
-                    : ''
-            );
+        if(near!==this.nearPaper){
+            this.nearPaper=near;
+            this.hint.setAttribute('value',near?'Press F to pick up':'');
         }
     }
 });
@@ -1099,29 +620,14 @@ AFRAME.registerComponent('paper-system', {
 </head>
 
 <body>
-
-<a-scene
-    room2-flicker
-    eye-click-return>
-
+<a-scene room2-flicker eye-click-return>
     <a-sky color="#111111"></a-sky>
 
     <a-assets>
-        <a-asset-item
-            id="Hallway"
-            src="Hallway2.glb">
-        </a-asset-item>
-
-        <a-asset-item
-            id="Room2"
-            src="Room2.glb">
-        </a-asset-item>
-
-        <audio
-            id="doorCreakSound"
-            src="door-creak.mp3"
-            preload="auto">
-        </audio>
+        <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
+        <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
+        <a-asset-item id="Room3" src="room3.glb"></a-asset-item>
+        <audio id="doorCreakSound" src="door-creak.mp3" preload="auto"></audio>
     </a-assets>
 
     <!-- 地上的任务纸 -->
@@ -1155,7 +661,7 @@ AFRAME.registerComponent('paper-system', {
             position="-1.9 -1.5 1.4">
         </a-entity>
 
-        <!-- Room2里的眼睛 -->
+        <!-- 眼睛 -->
         <a-entity
             id="eye"
             position="-2 0.2 0"
@@ -1165,73 +671,52 @@ AFRAME.registerComponent('paper-system', {
                 radius="0.75"
                 scale="1.45 0.85 0.55"
                 color="#d8d5cc"
-                material="
-                    roughness: 0.75;
-                    metalness: 0">
+                material="roughness:0.75; metalness:0">
             </a-sphere>
 
             <a-circle
                 position="0 0 0.42"
                 radius="0.34"
                 color="#777d77"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
 
             <a-circle
                 position="0 0 0.425"
                 radius="0.27"
                 color="#555b55"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
 
             <a-circle
                 position="0 0 0.43"
                 radius="0.20"
                 color="#343834"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
 
             <a-circle
                 position="0 0 0.435"
                 radius="0.12"
                 color="#050505"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
 
             <a-circle
                 position="0 0 0.44"
                 radius="0.07"
                 color="#000000"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
 
             <!-- 水波纹 -->
-            <a-entity
-                id="eyeRipple"
-                visible="false"
-                eye-ripple>
-
+            <a-entity id="eyeRipple" visible="false" eye-ripple>
                 <a-ring
                     id="eyeRipple1"
                     position="0 0 0.447"
                     radius-inner="0.115"
                     radius-outer="0.125"
-                    material="
-                        shader: flat;
-                        color: #ffffff;
-                        transparent: true;
-                        opacity: 0.8;
-                        side: double">
+                    material="shader:flat; color:#ffffff; transparent:true; opacity:0.8; side:double">
                 </a-ring>
 
                 <a-ring
@@ -1239,12 +724,7 @@ AFRAME.registerComponent('paper-system', {
                     position="0 0 0.448"
                     radius-inner="0.115"
                     radius-outer="0.125"
-                    material="
-                        shader: flat;
-                        color: #ffffff;
-                        transparent: true;
-                        opacity: 0.8;
-                        side: double">
+                    material="shader:flat; color:#ffffff; transparent:true; opacity:0.8; side:double">
                 </a-ring>
 
                 <a-ring
@@ -1252,48 +732,63 @@ AFRAME.registerComponent('paper-system', {
                     position="0 0 0.449"
                     radius-inner="0.115"
                     radius-outer="0.125"
-                    material="
-                        shader: flat;
-                        color: #ffffff;
-                        transparent: true;
-                        opacity: 0.8;
-                        side: double">
+                    material="shader:flat; color:#ffffff; transparent:true; opacity:0.8; side:double">
                 </a-ring>
             </a-entity>
 
+            <!-- 高光 -->
             <a-circle
                 position="-0.07 0.07 0.455"
                 radius="0.037"
                 color="#ffffff"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
 
             <a-circle
                 position="0.045 -0.04 0.456"
                 radius="0.015"
                 color="#d9d9d9"
-                material="
-                    shader: flat;
-                    side: double">
+                material="shader:flat; side:double">
             </a-circle>
         </a-entity>
     </a-entity>
 
-    <!-- Hallway → Room2 -->
+    <!-- Room3 -->
+    <a-entity
+        id="room3"
+        gltf-model="#Room3"
+        position="-3 0 -5"
+        visible="false">
+
+        <a-entity
+            id="room3Spawn"
+            position="0 -1.5 2">
+        </a-entity>
+    </a-entity>
+
+    <!-- Room3门 -->
+    <a-box
+        id="room3DoorTrigger"
+        position="0 0 3"
+        width="0.5"
+        height="4"
+        depth="2"
+        material="transparent:true; opacity:0"
+        room3-door-interaction>
+    </a-box>
+
+    <!-- Room2门 -->
     <a-box
         id="doorTrigger"
         position="2.5 1 -1.9"
         width="0.5"
         height="4"
         depth="2"
-        material="
-            transparent: true;
-            opacity: 0"
+        material="transparent:true; opacity:0"
         door-interaction>
     </a-box>
 
+    <!-- 黑色墙体 -->
     <a-box
         position="0.1 1 -5"
         width="0.2"
@@ -1323,83 +818,46 @@ AFRAME.registerComponent('paper-system', {
             look-controls
             head-bob>
 
-            <!-- 黑屏层 -->
+            <!-- 黑屏 -->
             <a-plane
                 id="blackScreen"
                 position="0 0 -0.5"
                 width="20"
                 height="20"
                 visible="false"
-                material="
-                    shader: flat;
-                    color: #000000;
-                    side: double;
-                    depthTest: false;
-                    depthWrite: false">
+                material="shader:flat; color:#000000; transparent:true; opacity:0; side:double; depthTest:false; depthWrite:false">
             </a-plane>
 
             <!-- 环境光 -->
             <a-entity
-                light="
-                    type: ambient;
-                    color: black;
-                    intensity: 1.2">
+                light="type:ambient; color:black; intensity:1.2">
             </a-entity>
 
             <!-- 手电 -->
             <a-entity
                 id="flashlight"
                 position="0 0 0"
-                light="
-                    type: spot;
-                    color: #fff1d6;
-                    intensity: 3;
-                    distance: 18;
-                    angle: 45;
-                    penumbra: 1;
-                    decay: 1">
+                light="type:spot; color:#fff1d6; intensity:3; distance:18; angle:45; penumbra:1; decay:1">
             </a-entity>
 
-            <!-- 白色小点准星 -->
-            <a-circle
-                id="crosshair"
-                position="0 0 -0.6"
-                radius="0.006"
-                color="#ffffff"
-                material="
-                    shader: flat;
-                    depthTest: false;
-                    depthWrite: false">
-            </a-circle>
-
-            <!-- 任务UI -->
+            <!-- 左上角任务栏 -->
             <a-entity
                 id="taskUI"
                 position="-1.25 0.78 -1"
                 hud-layer>
 
                 <a-plane
-                    position="0.20 -0.105 -0.01"
+                    position="0.20 -0.12 -0.01"
                     width="0.62"
-                    height="0.27"
-                    material="
-                        color: #050505;
-                        opacity: 0.72;
-                        transparent: true;
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    height="0.31"
+                    material="color:#050505; opacity:0.72; transparent:true; shader:flat; depthTest:false; depthWrite:false">
                 </a-plane>
 
                 <a-plane
-                    position="-0.105 -0.105 0"
+                    position="-0.105 -0.12 0"
                     width="0.008"
-                    height="0.27"
-                    material="
-                        color: #651919;
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    height="0.31"
+                    material="color:#651919; shader:flat; depthTest:false; depthWrite:false">
                 </a-plane>
 
                 <a-text
@@ -1409,10 +867,7 @@ AFRAME.registerComponent('paper-system', {
                     anchor="left"
                     width="0.52"
                     color="#8c3d3d"
-                    material="
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    material="shader:flat; depthTest:false; depthWrite:false">
                 </a-text>
 
                 <a-text
@@ -1422,29 +877,17 @@ AFRAME.registerComponent('paper-system', {
                     anchor="left"
                     width="0.65"
                     color="#d8d4ca"
-                    material="
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    material="shader:flat; depthTest:false; depthWrite:false">
                 </a-text>
 
                 <a-plane
                     position="0.19 -0.115 0"
                     width="0.52"
                     height="0.002"
-                    material="
-                        color: #4a4641;
-                        opacity: 0.65;
-                        transparent: true;
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    material="color:#4a4641; opacity:0.65; transparent:true; shader:flat; depthTest:false; depthWrite:false">
                 </a-plane>
 
-                <a-entity
-                    id="subTask"
-                    visible="false">
-
+                <a-entity id="subTask" visible="false">
                     <a-text
                         value="OBJECTIVE UPDATED"
                         position="-0.075 -0.15 0.01"
@@ -1452,10 +895,7 @@ AFRAME.registerComponent('paper-system', {
                         anchor="left"
                         width="0.46"
                         color="#77736c"
-                        material="
-                            shader: flat;
-                            depthTest: false;
-                            depthWrite: false">
+                        material="shader:flat; depthTest:false; depthWrite:false">
                     </a-text>
 
                     <a-text
@@ -1465,15 +905,22 @@ AFRAME.registerComponent('paper-system', {
                         anchor="left"
                         width="0.60"
                         color="#c9c5ba"
-                        material="
-                            shader: flat;
-                            depthTest: false;
-                            depthWrite: false">
+                        material="shader:flat; depthTest:false; depthWrite:false">
+                    </a-text>
+
+                    <a-text
+                        value="Press F to view task"
+                        position="-0.075 -0.25 0.01"
+                        align="left"
+                        anchor="left"
+                        width="0.48"
+                        color="#77736c"
+                        material="shader:flat; depthTest:false; depthWrite:false">
                     </a-text>
                 </a-entity>
             </a-entity>
 
-            <!-- 纸张阅读UI -->
+            <!-- 任务纸阅读UI -->
             <a-entity
                 id="paperInspectUI"
                 visible="false"
@@ -1485,10 +932,7 @@ AFRAME.registerComponent('paper-system', {
                     width="0.75"
                     height="1"
                     color="#b8aa87"
-                    material="
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    material="shader:flat; depthTest:false; depthWrite:false">
                 </a-plane>
 
                 <a-text
@@ -1500,24 +944,18 @@ AFRAME.registerComponent('paper-system', {
                     baseline="center"
                     width="0.62"
                     color="#111111"
-                    material="
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    material="shader:flat; depthTest:false; depthWrite:false">
                 </a-text>
 
                 <a-text
                     id="closeHint"
-                    value="Press E to close"
+                    value="Press F to put away"
                     position="0 -0.42 -0.68"
                     align="center"
                     anchor="center"
                     width="1"
                     color="#ffffff"
-                    material="
-                        shader: flat;
-                        depthTest: false;
-                        depthWrite: false">
+                    material="shader:flat; depthTest:false; depthWrite:false">
                 </a-text>
             </a-entity>
 
@@ -1530,9 +968,7 @@ AFRAME.registerComponent('paper-system', {
                 anchor="center"
                 width="1.5"
                 color="#ffffff"
-                material="
-                    shader: flat;
-                    depthTest: false">
+                material="shader:flat; depthTest:false">
             </a-text>
 
             <!-- 门提示 -->
@@ -1544,18 +980,12 @@ AFRAME.registerComponent('paper-system', {
                 anchor="center"
                 width="2"
                 color="#ffffff"
-                material="
-                    shader: flat;
-                    depthTest: false;
-                    depthWrite: false"
+                material="shader:flat; depthTest:false; depthWrite:false"
                 visible="false">
             </a-text>
 
         </a-camera>
-
     </a-entity>
-
 </a-scene>
-
 </body>
 </html>
