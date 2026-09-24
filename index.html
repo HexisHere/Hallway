@@ -193,6 +193,7 @@ AFRAME.registerComponent('door-interaction', {
     init() {
         this.nearDoor = false;
         this.hasEntered = false;
+        this.audioContext = null;
 
         this.player = document.querySelector('#player');
         this.camera = document.querySelector('#camera');
@@ -209,34 +210,176 @@ AFRAME.registerComponent('door-interaction', {
         });
     },
 
+    /* 门开启音效 */
+    playDoorSound() {
+        if (!this.audioContext) {
+            this.audioContext = new (
+                window.AudioContext ||
+                window.webkitAudioContext
+            )();
+        }
+
+        const ctx = this.audioContext;
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
+        const now = ctx.currentTime;
+
+        /* 第一层：低沉的门轴摩擦声 */
+        const oscillator = ctx.createOscillator();
+        const oscGain = ctx.createGain();
+        const lowpass = ctx.createBiquadFilter();
+
+        oscillator.type = 'sawtooth';
+
+        oscillator.frequency.setValueAtTime(95, now);
+        oscillator.frequency.exponentialRampToValueAtTime(
+            48,
+            now + 0.75
+        );
+
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 350;
+
+        oscGain.gain.setValueAtTime(0.001, now);
+        oscGain.gain.linearRampToValueAtTime(
+            0.12,
+            now + 0.08
+        );
+        oscGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + 0.85
+        );
+
+        oscillator.connect(lowpass);
+        lowpass.connect(oscGain);
+        oscGain.connect(ctx.destination);
+
+        oscillator.start(now);
+        oscillator.stop(now + 0.9);
+
+        /* 第二层：木门/旧门摩擦噪声 */
+        const duration = 0.9;
+        const bufferSize =
+            Math.floor(ctx.sampleRate * duration);
+
+        const buffer =
+            ctx.createBuffer(
+                1,
+                bufferSize,
+                ctx.sampleRate
+            );
+
+        const data =
+            buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            const t = i / bufferSize;
+
+            const envelope =
+                Math.sin(Math.PI * t);
+
+            data[i] =
+                (Math.random() * 2 - 1) *
+                envelope *
+                0.35;
+        }
+
+        const noise = ctx.createBufferSource();
+        const noiseFilter = ctx.createBiquadFilter();
+        const noiseGain = ctx.createGain();
+
+        noise.buffer = buffer;
+
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 700;
+        noiseFilter.Q.value = 0.7;
+
+        noiseGain.gain.setValueAtTime(
+            0.001,
+            now
+        );
+
+        noiseGain.gain.linearRampToValueAtTime(
+            0.18,
+            now + 0.12
+        );
+
+        noiseGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + 0.9
+        );
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+
+        noise.start(now);
+        noise.stop(now + 0.9);
+
+        /* 第三层：门打开后的低沉撞击声 */
+        const hit = ctx.createOscillator();
+        const hitGain = ctx.createGain();
+
+        hit.type = 'sine';
+
+        hit.frequency.setValueAtTime(
+            75,
+            now + 0.62
+        );
+
+        hit.frequency.exponentialRampToValueAtTime(
+            38,
+            now + 0.82
+        );
+
+        hitGain.gain.setValueAtTime(
+            0.001,
+            now
+        );
+
+        hitGain.gain.setValueAtTime(
+            0.22,
+            now + 0.62
+        );
+
+        hitGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + 0.85
+        );
+
+        hit.connect(hitGain);
+        hitGain.connect(ctx.destination);
+
+        hit.start(now + 0.62);
+        hit.stop(now + 0.9);
+    },
+
     enterRoom() {
         this.hasEntered = true;
         this.nearDoor = false;
 
+        /* 先播放开门声音 */
+        this.playDoorSound();
+
         this.text.setAttribute('value', '');
         this.text.setAttribute('visible', false);
 
-        /* 隐藏走廊 */
         this.hallway.setAttribute('visible', false);
-
-        /* 显示Room2 */
         this.room2.setAttribute('visible', true);
 
-        /* 更新Room2世界坐标 */
         this.room2.object3D.updateMatrixWorld(true);
 
-        /* 获取Room2出生点 */
         const spawnPosition = new THREE.Vector3();
         this.spawn.object3D.getWorldPosition(spawnPosition);
 
-        /* 把玩家传送过去 */
         this.player.object3D.position.copy(spawnPosition);
-
-        /* 重置摄像机高度 */
         this.camera.object3D.position.set(0, 1.6, 0);
 
-        /* 设置玩家进入Room2后的朝向 */
-        const lookControls = this.camera.components['look-controls'];
+        const lookControls =
+            this.camera.components['look-controls'];
 
         if (lookControls) {
             lookControls.yawObject.rotation.y =
@@ -255,7 +398,9 @@ AFRAME.registerComponent('door-interaction', {
         this.el.object3D.getWorldPosition(doorPosition);
         this.camera.object3D.getWorldPosition(cameraPosition);
 
-        const distance = doorPosition.distanceTo(cameraPosition);
+        const distance =
+            doorPosition.distanceTo(cameraPosition);
+
         const near = distance < 2;
 
         if (near !== this.nearDoor) {
@@ -266,7 +411,10 @@ AFRAME.registerComponent('door-interaction', {
                 near ? 'Press E to enter' : ''
             );
 
-            this.text.setAttribute('visible', near);
+            this.text.setAttribute(
+                'visible',
+                near
+            );
         }
     }
 });
