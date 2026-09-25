@@ -992,6 +992,11 @@ AFRAME.registerComponent('paper-system',{
 <audio id="room4MusicAudio" src="child.mp3" preload="auto" loop></audio>
 </a-assets>
 
+<!-- 游戏背景音乐 -->
+<a-entity id="gameBackgroundMusic"
+sound="src: url(backgroundMusic.mp3); autoplay: true; false: true; volume: 0.3; positional: false">
+</a-entity>
+
 <!-- 地上的任务纸 -->
 <a-box id="missionPaper" position="1 -1 3" rotation="0 8 0" width="0.45" height="0.02" depth="0.6" color="#e8e2d3"></a-box>
 
@@ -1099,12 +1104,6 @@ AFRAME.registerComponent('paper-system',{
 <a-entity id="room4Music"
 sound="src: #room4MusicAudio; autoplay: false; loop: true; volume: 0.5; positional: false">
 </a-entity>
-
-</a-entity>
-
-<!-- Room4空间音乐源 -->
-<a-entity position="0 0 -4"
-sound="src: url(backgroundMusic.mp3); autoplay: true; loop: false; volume: 0.3; positional: false; refDistance: 1; maxDistance: 12; rolloffFactor: 1.5">
 </a-entity>
 <!-- Room4结局红光 -->
 <a-light id="room4RedLight"
