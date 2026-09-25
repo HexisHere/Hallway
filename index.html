@@ -565,6 +565,82 @@ AFRAME.registerComponent('black-box-interaction',{
         }
     }
 });
+// 开场语音和字幕
+AFRAME.registerComponent('opening-narration',{
+    init(){
+        this.audio=document.querySelector('#beginAudio');
+        this.subtitleBox=document.querySelector('#openingSubtitle');
+        this.subtitleText=document.querySelector('#openingSubtitleText');
+        this.started=false;
+        this.subtitleIndex=-1;
+        this.subtitles=[
+            {start:0,end:2,text:'Welcome, Dream Explorer.'},
+            {start:2,end:9,text:'Congratulations! You have been selected to participate in the Elsewhere Dream Exploration Program.'},
+            {start:9,end:13,text:'Dreams are one of the most important windows into the human mind.'},
+            {start:13,end:23,text:'Every hallway, every room, and every object you encounter may be a reflection of memory, emotion, or the subconscious.'},
+            {start:23,end:26,text:'As a Dream Explorer, your responsibility is simple.'},
+            {start:26,end:32,text:'Observe the environment, document anything unusual, and follow the instructions provided to you.'},
+            {start:32,end:36,text:'Please remember: everything you see here is part of a dream.'},
+            {start:36,end:38,text:'Therefore, nothing here can hurt you.'},
+            {start:38,end:41,text:"At least, that's what we've been told."},
+            {start:41,end:44,text:'Your first assignment has already begun.'},
+            {start:44,end:47,text:'Somewhere in this environment is a way out.'},
+            {start:47,end:49,text:'Your task is simple.'},
+            {start:49,end:51,text:'Escape from here.'}
+        ];
+        if(this.audio){
+            this.audio.addEventListener('ended',()=>{
+                this.subtitleText.setAttribute('value','');
+                this.subtitleBox.setAttribute('visible',false);
+            });
+        }
+        const start=()=>{
+            if(this.started)return;
+            this.startNarration();
+        };
+        window.addEventListener('click',start);
+        window.addEventListener('keydown',start);
+        this.startNarration();
+    },
+
+    startNarration(){
+        if(this.started||!this.audio)return;
+        this.audio.volume=0.9;
+        const playPromise=this.audio.play();
+        if(playPromise!==undefined){
+            playPromise.then(()=>{
+                this.started=true;
+                this.subtitleBox.setAttribute('visible',true);
+            }).catch(()=>{
+                console.log('Click or press a key to start narration.');
+            });
+        }
+    },
+
+    tick(){
+        if(!this.started||!this.audio||this.audio.paused)return;
+        const currentTime=this.audio.currentTime;
+        let activeIndex=-1;
+        for(let i=0;i<this.subtitles.length;i++){
+            const subtitle=this.subtitles[i];
+            if(currentTime>=subtitle.start&&currentTime<subtitle.end){
+                activeIndex=i;
+                break;
+            }
+        }
+
+        if(activeIndex===this.subtitleIndex)return;
+        this.subtitleIndex=activeIndex;
+        if(activeIndex===-1){
+            this.subtitleText.setAttribute('value','');
+            return;
+        }
+        this.subtitleText.setAttribute(
+            'value',
+            this.subtitles[activeIndex].text
+        );
+    }
+});
 // 任务纸系统
 AFRAME.registerComponent('paper-system',{
     init(){
@@ -730,6 +806,7 @@ AFRAME.registerComponent('paper-system',{
         <a-asset-item id="Hallway" src="Hallway2.glb"></a-asset-item>
         <a-asset-item id="Room2" src="Room2.glb"></a-asset-item>
         <a-asset-item id="Room3" src="room3.glb"></a-asset-item>
+        <audio id="beginAudio" src="begin.mp3" preload="auto"></audio>
         <audio id="room2DoorSound" src="door sound.mp3" preload="auto"></audio>
         <audio id="room3DoorSound" src="door sound.mp3" preload="auto"></audio>
     </a-assets>
@@ -837,7 +914,7 @@ AFRAME.registerComponent('paper-system',{
     <a-box position="5 0 -5" width="1" height="7" depth="4" color="#000000"></a-box>
     <!-- 玩家 -->
     <a-entity id="player" position="1 -1.5 5" paper-system footsteps>
-        <a-camera id="camera" wasd-controls="acceleration: 6" look-controls head-bob>
+       <a-camera id="camera" wasd-controls="acceleration: 6" look-controls head-bob opening-narration>
             <a-plane id="blackScreen" position="0 0 -0.5" width="20" height="20" visible="false" material="shader:flat; color:#000000; transparent:true; opacity:0; side:double; depthTest:false; depthWrite:false"></a-plane>
             <a-entity light="type:ambient; color:black; intensity:1.2"></a-entity>
             <a-entity id="flashlight" position="0 0 0" light="type:spot; color:#fff1d6; intensity:3; distance:18; angle:45; penumbra:1; decay:1"></a-entity>
@@ -863,6 +940,26 @@ AFRAME.registerComponent('paper-system',{
             <!-- 提示 -->
             <a-text id="paperHint" value="" position="0 -0.42 -0.60" align="center" anchor="center" width="1.5" color="#ffffff" material="shader:flat; depthTest:false"></a-text>
             <a-text id="enterText" value="" position="0 -0.25 -0.60" align="center" anchor="center" width="2" color="#ffffff" material="shader:flat; depthTest:false; depthWrite:false" visible="false"></a-text>
+            <!-- 开场字幕 -->
+<a-entity id="openingSubtitle" visible="false" position="0 -0.32 -0.8">
+    <a-plane
+        position="0 0 -0.01"
+        width="1.35"
+        height="0.18"
+        material="shader:flat; color:#000000; transparent:true; opacity:0.55; depthTest:false; depthWrite:false">
+    </a-plane>
+    <a-text
+        id="openingSubtitleText"
+        value=""
+        position="0 0 0"
+        align="center"
+        anchor="center"
+        baseline="center"
+        width="1.15"
+        color="#ffffff"
+        material="shader:flat; depthTest:false; depthWrite:false">
+    </a-text>
+</a-entity>
         </a-camera>
     </a-entity>
 </a-scene>
