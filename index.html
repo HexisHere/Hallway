@@ -611,6 +611,14 @@ AFRAME.registerComponent('next-door-interaction',{
         this.hallway.setAttribute('visible',false);
         this.room4.setAttribute('visible',true);
         this.room4.object3D.updateMatrixWorld(true);
+        const room4Music=document.querySelector('#room4Music');
+if(room4Music&&room4Music.components.sound){
+    room4Music.components.sound.playSound();
+}
+const room4Ending=this.room4.components['room4-ending'];
+if(room4Ending){
+    room4Ending.startEnding();
+}
         const spawnPosition=new THREE.Vector3();
         this.spawn.object3D.getWorldPosition(spawnPosition);
         this.player.object3D.position.copy(spawnPosition);
@@ -632,7 +640,7 @@ AFRAME.registerComponent('next-door-interaction',{
         if(!unlocked){
             if(this.nearDoor){
                 this.nearDoor=false;
-                this.text.setAttribaute('value','');
+                this.text.setAttribute('value','');
                 this.text.setAttribute('visible',false);
             }
             return;
@@ -647,6 +655,90 @@ AFRAME.registerComponent('next-door-interaction',{
             this.nearDoor=near;
             this.text.setAttribute('value',near?'Press E to enter':'');
             this.text.setAttribute('visible',near);
+        }
+    }
+});
+// Room4结局
+AFRAME.registerComponent('room4-ending',{
+    init(){
+        this.started=false;
+        this.ending=false;
+        this.room4=document.querySelector('#room4');
+        this.blackScreen=document.querySelector('#blackScreen');
+        this.redLight=document.querySelector('#room4RedLight');
+        this.gameOver=document.querySelector('#gameOverText');
+    },
+    startEnding(){
+        if(this.started)return;
+        this.started=true;
+        // 进入Room4十秒后开始
+        setTimeout(()=>{
+            if(!this.room4.getAttribute('visible'))return;
+            this.ending=true;
+            this.redLight.setAttribute('visible',true);
+            this.fadeRed();
+        },10000);
+    },
+
+    fadeRed(){
+        const light=this.redLight.getObject3D('light');
+        const duration=3000;
+        const startTime=performance.now();
+        const animate=now=>{
+            const progress=Math.min((now-startTime)/duration,1);
+            if(light)light.intensity=progress*6;
+            if(progress<1){
+                requestAnimationFrame(animate);
+            }else{
+                setTimeout(()=>this.fadeBlack(),1200);
+            }
+        };
+        requestAnimationFrame(animate);
+    },
+
+    fadeBlack(){
+        if(!this.blackScreen)return;
+        this.blackScreen.setAttribute('visible',true);
+        this.blackScreen.setAttribute('material','opacity',0);
+        this.blackScreen.object3D.traverse(obj=>{
+            obj.renderOrder=99999;
+            if(obj.material){
+                obj.material.depthTest=false;
+                obj.material.depthWrite=false;
+                obj.material.transparent=true;
+            }
+        });
+        const duration=3000;
+        const startTime=performance.now();
+        const fade=now=>{
+            const progress=Math.min((now-startTime)/duration,1);
+            const eased=progress*progress*(3-2*progress);
+            this.blackScreen.setAttribute('material','opacity',eased);
+
+            if(progress<1){
+                requestAnimationFrame(fade);
+            }else{
+                this.finishGame();
+            }
+        };
+        requestAnimationFrame(fade);
+    },
+
+    finishGame(){
+        const room4Music=document.querySelector('#room4Music');
+        if(room4Music&&room4Music.components.sound){
+            room4Music.components.sound.stopSound();
+        }
+
+        if(this.gameOver){
+            this.gameOver.setAttribute('visible',true);
+            this.gameOver.object3D.traverse(obj=>{
+                obj.renderOrder=100001;
+                if(obj.material){
+                    obj.material.depthTest=false;
+                    obj.material.depthWrite=false;
+                }
+            });
         }
     }
 });
@@ -897,6 +989,7 @@ AFRAME.registerComponent('paper-system',{
 <audio id="whisperingSound" src="whispering.mp3" preload="auto" loop></audio>
 <a-asset-item id="Room4" src="room4.glb"></a-asset-item>
 <audio id="backgroundMusic" src="backgroundMusic.mp3" preload="auto" loop></audio>
+<audio id="room4MusicAudio" src="child.mp3" preload="auto" loop></audio>
 </a-assets>
 
 <!-- 地上的任务纸 -->
@@ -999,13 +1092,30 @@ AFRAME.registerComponent('paper-system',{
 </a-entity>
 
 <!-- Room4 -->
-<a-entity id="room4" gltf-model="#Room4" position="0 0 -5" visible="false">
-<a-entity id="room4Spawn" position="-1 -1.5 1"></a-entity>
+<a-entity id="room4" gltf-model="#Room4" position="0 0 -5" visible="false" room4-ending></a-entity>
+<a-entity id="room4Spawn" position="-1 -1.5 -3"></a-entity>
+
+<!-- Room4独立音乐 -->
+<a-entity id="room4Music"
+sound="src: #room4MusicAudio; autoplay: false; loop: true; volume: 0.5; positional: false">
+</a-entity>
+
+</a-entity>
 
 <!-- Room4空间音乐源 -->
 <a-entity position="0 0 -4"
 sound="src: url(backgroundMusic.mp3); autoplay: true; loop: false; volume: 0.3; positional: false; refDistance: 1; maxDistance: 12; rolloffFactor: 1.5">
 </a-entity>
+<!-- Room4结局红光 -->
+<a-light id="room4RedLight"
+type="point"
+position="0 1 0"
+color="#ff0000"
+intensity="0"
+distance="20"
+decay="1"
+visible="false">
+</a-light>
 
 </a-entity>
 
@@ -1039,6 +1149,18 @@ sound="src: url(backgroundMusic.mp3); autoplay: true; loop: false; volume: 0.3; 
 <a-camera id="camera" wasd-controls="acceleration: 6" look-controls head-bob opening-narration>
 
 <a-plane id="blackScreen" position="0 0 -0.5" width="20" height="20" visible="false" material="shader:flat; color:#000000; transparent:true; opacity:0; side:double; depthTest:false; depthWrite:false"></a-plane>
+
+<!-- 游戏结束文字 -->
+<a-text id="gameOverText"
+value="END"
+position="0 0 -0.4"
+align="center"
+anchor="center"
+width="2"
+color="#ffffff"
+visible="false"
+material="shader:flat; depthTest:false; depthWrite:false">
+</a-text>
 <a-entity light="type:ambient; color:black; intensity:1.2"></a-entity>
 <a-entity id="flashlight" position="0 0 0" light="type:spot; color:#fff1d6; intensity:3; distance:18; angle:45; penumbra:1; decay:1"></a-entity>
 
