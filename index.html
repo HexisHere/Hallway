@@ -198,20 +198,27 @@ AFRAME.registerComponent('eye-click-return',{
         requestAnimationFrame(fade);
     },
     returnToHallway(){
-        this.room2.setAttribute('visible',false);
-        this.hallway.setAttribute('visible',true);
-        room2Completed=true;
-        this.player.object3D.position.set(1,-1.5,5);
-        this.camera.object3D.position.set(0,1.6,0);
-        const lookControls=this.camera.components['look-controls'];
-        if(lookControls){
-            lookControls.yawObject.rotation.y=0;
-            lookControls.pitchObject.rotation.x=0;
-        }
-        this.player.object3D.updateMatrixWorld(true);
-        this.camera.object3D.updateMatrixWorld(true);
-        setTimeout(()=>this.startFadeIn(),500);
-    },
+    const whisperingSound=document.querySelector('#whisperingSound');
+
+    // 离开Room2时停止耳语
+    if(whisperingSound){
+        whisperingSound.pause();
+        whisperingSound.currentTime=0;
+    }
+    this.room2.setAttribute('visible',false);
+    this.hallway.setAttribute('visible',true);
+    room2Completed=true;
+    this.player.object3D.position.set(1,-1.5,5);
+    this.camera.object3D.position.set(0,1.6,0);
+    const lookControls=this.camera.components['look-controls'];
+    if(lookControls){
+        lookControls.yawObject.rotation.y=0;
+        lookControls.pitchObject.rotation.x=0;
+    }
+    this.player.object3D.updateMatrixWorld(true);
+    this.camera.object3D.updateMatrixWorld(true);
+    setTimeout(()=>this.startFadeIn(),500);
+},
     startFadeIn(){
         if(!this.blackScreen)return;
         const duration=2200;
@@ -349,16 +356,20 @@ AFRAME.registerComponent('door-interaction',{
         this.spawn=document.querySelector('#room2Spawn');
         this.text=document.querySelector('#enterText');
         this.doorSound=document.querySelector('#room2DoorSound');
+        this.whisperingSound=document.querySelector('#whisperingSound');
+
         window.addEventListener('keydown',e=>{
             if(e.code!=='KeyE'||e.repeat)return;
             if(!this.nearDoor||this.hasEntered)return;
             this.enterRoom();
         });
     },
+
     enterRoom(){
         this.hasEntered=true;
         this.nearDoor=false;
         room2Visited=true;
+
         if(this.doorSound){
             this.doorSound.pause();
             this.doorSound.currentTime=0;
@@ -367,16 +378,29 @@ AFRAME.registerComponent('door-interaction',{
                 console.error('Room2 sound failed:',error);
             });
         }
+
         this.text.setAttribute('value','');
         this.text.setAttribute('visible',false);
+
         this.hallway.setAttribute('visible',false);
         this.room2.setAttribute('visible',true);
+
+        // 进入Room2后开始播放耳语
+        if(this.whisperingSound){
+            this.whisperingSound.pause();
+            this.whisperingSound.currentTime=0;
+            this.whisperingSound.volume=0.45;
+            this.whisperingSound.play().catch(error=>{
+                console.error('Whispering sound failed:',error);
+            });
+        }
         this.room2.object3D.updateMatrixWorld(true);
         const spawnPosition=new THREE.Vector3();
         this.spawn.object3D.getWorldPosition(spawnPosition);
         this.player.object3D.position.copy(spawnPosition);
         this.camera.object3D.position.set(0,1.6,0);
         const lookControls=this.camera.components['look-controls'];
+
         if(lookControls){
             lookControls.yawObject.rotation.y=THREE.MathUtils.degToRad(ROOM2_YAW);
             lookControls.pitchObject.rotation.x=0;
@@ -384,6 +408,7 @@ AFRAME.registerComponent('door-interaction',{
         this.player.object3D.updateMatrixWorld(true);
         this.camera.object3D.updateMatrixWorld(true);
     },
+
     tick(){
         if(this.hasEntered)return;
         const doorPosition=new THREE.Vector3();
@@ -809,6 +834,7 @@ AFRAME.registerComponent('paper-system',{
         <audio id="beginAudio" src="begin.mp3" preload="auto"></audio>
         <audio id="room2DoorSound" src="door sound.mp3" preload="auto"></audio>
         <audio id="room3DoorSound" src="door sound.mp3" preload="auto"></audio>
+        <audio id="whisperingSound" src="whispering.mp3" preload="auto" loop></audio>
     </a-assets>
     <!-- 地上的任务纸 -->
     <a-box id="missionPaper" position="1 -1 3" rotation="0 8 0" width="0.45" height="0.02" depth="0.6" color="#e8e2d3"></a-box>
